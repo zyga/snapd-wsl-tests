@@ -12,8 +12,15 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
-      - name: Greetings
+      - name: Install WSL
         run: |
-          Write-Output "Hello, world!"
-
-
+          Write-Output "Installing WSL as an optional component..."
+          # NOTE: This can be undone with:
+          # Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+          if ( $(Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux).RestartNeeded ) {
+            Write-Output "WSL was just installed, restart is required"
+            Restart-Computer
+          } else {
+            Write-Output "Switching to WSL 2"
+            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--set-default-version 2"
+          }
