@@ -7,20 +7,125 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+
+env:
+  WSL_UTF8: "1"
+
 jobs:
   build:
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
+
       - name: Install WSL
         run: |
-          Write-Output "Installing WSL as an optional component..."
-          # NOTE: This can be undone with:
-          # Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-          if ( $(Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux).RestartNeeded ) {
-            Write-Output "WSL was just installed, restart is required"
-            Restart-Computer
-          } else {
-            Write-Output "Switching to WSL 2"
-            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--set-default-version 2"
+          Write-Output "Installing WSL..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--install --no-distribution --web-download"
+          if ( ! $? ) {
+            exit 1
+          }
+          Write-Output "Switching to WSL 2"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--set-default-version 2"
+          if ( ! $? ) {
+            exit 1
+          }
+          Write-Output "Querying WSL version and status"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--version"
+          if ( ! $? ) {
+            exit 1
+          }
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--status"
+          if ( ! $? ) {
+            exit 1
+          }
+
+      - name: Cache Ubuntu 24.04 amd64 WSL RootFS
+        id: cache-rootfs
+        uses: actions/cache@v4
+        with:
+          path: wsl-images/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
+          key: ubuntu-24.04-amd64
+
+      - name: Download Ubuntu 24.04 amd64 WSL RootFS
+        if: steps.cache-rootfs.outputs.cache-hit != 'true'
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+          $DistroImageURL = 'https://cloud-images.ubuntu.com/wsl/noble/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
+          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-images" ) ) {
+            New-Item -ItemType Directory -Name wsl-images
+          }
+          if ( -not ( Test-Path -PathType Leaf -Path "wsl-images\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" ) ) {
+            Write-Output "Downloading Ubuntu 24.04 amd64 rootfs for WSL"
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-images\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
+            if ( ! $? ) {
+              exit 1
+            }
+          }
+
+      - name: Prepare Ubuntu 24.04 amd64 WSL instance
+        run: |
+          Write-Output "Preparing cloud-init configuration for WSL"
+          $DistroName = 'Test-Ubuntu-24.04'
+          $CloudInit = @"
+          #cloud-config
+
+          locale: en_US
+
+          users:
+            - name: snapd-ci
+              gecos: snapd-ci
+              primary_group: snapd-ci
+              lock_passwd: false
+              sudo: ALL=(ALL) NOPASSWD:ALL
+              groups:
+                - users
+                - admin
+                - lxd # For using LXD without sudo
+                - docker # For using Docker without sudo
+              shell: /bin/bash
+
+          runcmd:
+            - ln -fs `"`$(wslpath -u `'$($(Get-Location).Path)`')`" /srv/workspace
+          "@
+
+          if ( -not ( Test-Path -PathType Container -LiteralPath "$env:USERPROFILE\.cloud-init" ) ) {
+            New-Item -ItemType Directory -Path "$env:USERPROFILE" -Name ".cloud-init"
+            if ( ! $? ) {
+              exit 1
+            }
+          }
+          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)\.cloud-init" -Name "$DistroName.user-data" -Value "$CloudInit"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Terminating and removing old instance"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
+          # This may fail if there's no running instance
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
+          # This may fail if there's no instance to remove
+
+          Write-Output "Importing Ubuntu 24.04 RootFS into WSL..."
+          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-registered-images" ) ) {
+            New-Item -ItemType Directory -Name "wsl-registered-images"
+            if ( ! $? ) {
+              exit 1
+            }
+          }
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-registered-images\ubuntu-24.04\ .\wsl-images\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz --version 2"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Starting Ubuntu 24.04 and waiting for cloud-init to finish"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init status --wait"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Validating cloud-init schema"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init schema --system"
+          if ( ! $? ) {
+            exit 1
           }
