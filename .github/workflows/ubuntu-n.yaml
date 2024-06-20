@@ -1,0 +1,19 @@
+name: Ubuntu-N
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, Windows, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Greetings
+        run: |
+          Write-Output "Hello, world!"
+
+
