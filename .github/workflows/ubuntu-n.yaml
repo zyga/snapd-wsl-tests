@@ -235,3 +235,13 @@ jobs:
           if ( ! $? ) {
             exit 1
           }
+
+      - name: Terminate Ubuntu 24.04 amd64 WSL instance
+        if: always()
+        run: |
+          Write-Output "Terminating Ubuntu 24.04 amd64 WSL instance"
+          $DistroName = 'Test-Ubuntu-24.04'
+
+          Write-Output "Terminating and removing old instance"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
