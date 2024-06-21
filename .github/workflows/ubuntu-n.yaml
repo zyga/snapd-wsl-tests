@@ -140,3 +140,52 @@ jobs:
           if ( ! $? ) {
             exit 1
           }
+
+      - name: Cache snaps necessary for testing on amd64
+        id: cache-snaps
+        uses: actions/cache@v4
+        with:
+          path: snaps/
+          key: snaps-amd64
+
+      - name: Download snaps necessary for testing on amd64
+        if: steps.cache-snaps.outputs.cache-hit != 'true'
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+          Write-Output "Downloading snaps necessary for testing"
+          if ( -not ( Test-Path -PathType Container -LiteralPath "snaps" ) ) {
+            New-Item -ItemType Directory -Name "snaps"
+            if ( ! $? ) {
+              exit 1
+            }
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps snapd"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps bare"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps core22"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps hello"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps bare"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps lxd"
+          if ( ! $? ) {
+            exit 1
+          }
