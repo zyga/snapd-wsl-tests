@@ -43,7 +43,7 @@ jobs:
         id: cache-rootfs
         uses: actions/cache@v4
         with:
-          path: wsl-images/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
+          path: wsl-rootfses/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
           key: ubuntu-24.04-amd64
 
       - name: Download Ubuntu 24.04 amd64 WSL RootFS
@@ -51,13 +51,13 @@ jobs:
         run: |
           $DistroName = 'Test-Ubuntu-24.04'
           $DistroImageURL = 'https://cloud-images.ubuntu.com/wsl/noble/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
-          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-images" ) ) {
-            New-Item -ItemType Directory -Name wsl-images
+          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-rootfses" ) ) {
+            New-Item -ItemType Directory -Name wsl-rootfses
           }
-          if ( -not ( Test-Path -PathType Leaf -Path "wsl-images\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" ) ) {
+          if ( -not ( Test-Path -PathType Leaf -Path "wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" ) ) {
             Write-Output "Downloading Ubuntu 24.04 amd64 rootfs for WSL"
             $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-images\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
+            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
             if ( ! $? ) {
               exit 1
             }
@@ -118,13 +118,13 @@ jobs:
           # This may fail if there's no instance to remove
 
           Write-Output "Importing Ubuntu 24.04 RootFS into WSL..."
-          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-registered-images" ) ) {
-            New-Item -ItemType Directory -Name "wsl-registered-images"
+          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
+            New-Item -ItemType Directory -Name "wsl-vms"
             if ( ! $? ) {
               exit 1
             }
           }
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-registered-images\ubuntu-24.04\ .\wsl-images\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz --version 2"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\ubuntu-24.04\ .\wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz --version 2"
           if ( ! $? ) {
             exit 1
           }
