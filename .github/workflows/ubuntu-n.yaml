@@ -24,12 +24,12 @@ jobs:
           if ( ! $? ) {
             exit 1
           }
-          Write-Output "Switching to WSL 2"
+          Write-Output "Switching to WSL 2."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--set-default-version 2"
           if ( ! $? ) {
             exit 1
           }
-          Write-Output "Querying WSL version and status"
+          Write-Output "Querying WSL version and status."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--version"
           if ( ! $? ) {
             exit 1
@@ -55,7 +55,7 @@ jobs:
             New-Item -ItemType Directory -Name wsl-rootfses
           }
           if ( -not ( Test-Path -PathType Leaf -Path "wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" ) ) {
-            Write-Output "Downloading Ubuntu 24.04 amd64 rootfs for WSL"
+            Write-Output "Downloading Ubuntu 24.04 amd64 rootfs for WSL..."
             $ProgressPreference = 'SilentlyContinue'
             Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
             if ( ! $? ) {
@@ -65,7 +65,7 @@ jobs:
 
       - name: Prepare Ubuntu 24.04 amd64 WSL instance
         run: |
-          Write-Output "Preparing cloud-init configuration for WSL"
+          Write-Output "Preparing cloud-init configuration for WSL."
           $DistroName = 'Test-Ubuntu-24.04'
           $CloudInit = @"
           #cloud-config
@@ -100,7 +100,7 @@ jobs:
             exit 1
           }
 
-          Write-Output "Preparing WSL configuration file"
+          Write-Output "Preparing WSL configuration file."
           $WslConfig = @'
           [wsl2]
           vmIdleTimeout = -1
@@ -111,7 +111,7 @@ jobs:
             exit 1
           }
 
-          Write-Output "Terminating and removing old instance"
+          Write-Output "Terminating and removing old instance."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
           # This may fail if there's no running instance
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
@@ -129,13 +129,13 @@ jobs:
             exit 1
           }
 
-          Write-Output "Starting Ubuntu 24.04 and waiting for cloud-init to finish"
+          Write-Output "Starting Ubuntu 24.04 and waiting for cloud-init to finish..."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init status --wait"
           if ( ! $? ) {
             exit 1
           }
 
-          Write-Output "Validating cloud-init schema"
+          Write-Output "Validating cloud-init schema."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init schema --system"
           if ( ! $? ) {
             exit 1
@@ -152,7 +152,7 @@ jobs:
         if: steps.cache-snaps.outputs.cache-hit != 'true'
         run: |
           $DistroName = 'Test-Ubuntu-24.04'
-          Write-Output "Downloading snaps necessary for testing"
+          Write-Output "Downloading snaps necessary for testing..."
           if ( -not ( Test-Path -PathType Container -LiteralPath "snaps" ) ) {
             New-Item -ItemType Directory -Name "snaps"
             if ( ! $? ) {
@@ -194,43 +194,43 @@ jobs:
         run: |
           $DistroName = 'Test-Ubuntu-24.04'
 
-          Write-Output "Starting snapd service"
+          Write-Output "Starting snapd service."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl start snapd"
           if ( ! $? ) {
             exit 1
           }
 
-          Write-Output "Querying status of snapd service and socket"
+          Write-Output "Querying status of snapd service and socket."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
           if ( ! $? ) {
             exit 1
           }
 
-          Write-Output "Version of snapd in the rootfs"
+          Write-Output "Version of snapd in the rootfs."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
           if ( ! $? ) {
             exit 1
           }
 
-          Write-Output "Installing snapd snap assertion"
+          Write-Output "Installing snapd snap assertion."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/snapd_*.assert"
           if ( ! $? ) {
             exit 1
           }
 
-          Write-Output "Installing snapd as a snap"
+          Write-Output "Installing snapd as a snap."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/snapd_*.snap"
           if ( ! $? ) {
             exit 1y
           }
 
-          Write-Output "Version of snapd from the snapd snap"
+          Write-Output "Version of snapd from the snapd snap."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
           if ( ! $? ) {
             exit 1
           }
 
-          Write-Output "Querying status of snapd service and socket after snapd snap is installed"
+          Write-Output "Querying status of snapd service and socket after snapd snap is installed."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
           if ( ! $? ) {
             exit 1
@@ -239,7 +239,7 @@ jobs:
       - name: Terminate Ubuntu 24.04 amd64 WSL instance
         if: always()
         run: |
-          Write-Output "Terminating Ubuntu 24.04 amd64 WSL instance"
+          Write-Output "Terminating Ubuntu 24.04 amd64 WSL instance..."
           $DistroName = 'Test-Ubuntu-24.04'
 
           Write-Output "Terminating and removing old instance"
