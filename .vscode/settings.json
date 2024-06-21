@@ -1,5 +1,16 @@
 {
     "cSpell.enableFiletypes": [
         "github-actions-workflow"
+    ],
+    "cSpell.words": [
+        "Distro",
+        "gecos",
+        "NOPASSWD",
+        "rootfs",
+        "rootfses",
+        "runcmd",
+        "USERPROFILE",
+        "wslconfig",
+        "wslpath"
     ]
 }
