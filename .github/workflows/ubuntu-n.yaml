@@ -100,6 +100,17 @@ jobs:
             exit 1
           }
 
+          Write-Output "Preparing WSL configuration file"
+          $WslConfig = @'
+          [wsl2]
+          vmIdleTimeout = -1
+          '@
+
+          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)" -Name ".wslconfig" -Value "$WslConfig"
+          if ( ! $? ) {
+            exit 1
+          }
+
           Write-Output "Terminating and removing old instance"
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
           # This may fail if there's no running instance
