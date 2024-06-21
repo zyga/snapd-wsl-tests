@@ -189,3 +189,49 @@ jobs:
           if ( ! $? ) {
             exit 1
           }
+
+      - name: Install snapd snap
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+
+          Write-Output "Starting snapd service"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl start snapd"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Querying status of snapd service and socket"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Version of snapd in the rootfs"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Installing snapd snap assertion"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/snapd_*.assert"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Installing snapd as a snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/snapd_*.snap"
+          if ( ! $? ) {
+            exit 1y
+          }
+
+          Write-Output "Version of snapd from the snapd snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
+          if ( ! $? ) {
+            exit 1
+          }
+
+          Write-Output "Querying status of snapd service and socket after snapd snap is installed"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
+          if ( ! $? ) {
+            exit 1
+          }
