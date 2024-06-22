@@ -7,20 +7,313 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+
+env:
+  WSL_UTF8: "1"
+
 jobs:
   build:
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
+
       - name: Install WSL
         run: |
-          Write-Output "Installing WSL as an optional component..."
-          # NOTE: This can be undone with:
-          # Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-          if ( $(Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux).RestartNeeded ) {
-            Write-Output "WSL was just installed, restart is required"
-            Restart-Computer
-          } else {
-            Write-Output "Switching to WSL 2"
-            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--set-default-version 2"
+          Write-Output "Installing WSL..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--install --no-distribution --web-download"
+          if ( ! $? ) {
+            exit 1
           }
+          Write-Output "Switching to WSL 2."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--set-default-version 2"
+          if ( ! $? ) {
+            exit 1
+          }
+          Write-Output "Querying WSL version and status."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--version"
+          if ( ! $? ) {
+            exit 1
+          }
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--status"
+          if ( ! $? ) {
+            exit 1
+          }
+
+      - name: Cache Ubuntu 24.04 amd64 WSL RootFS
+        id: cache-rootfs
+        uses: actions/cache@v4
+        with:
+          path: wsl-rootfses/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
+          key: ubuntu-24.04-amd64
+
+      - name: Download Ubuntu 24.04 amd64 WSL RootFS
+        if: steps.cache-rootfs.outputs.cache-hit != 'true'
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+          $DistroImageURL = 'https://cloud-images.ubuntu.com/wsl/noble/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
+          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-rootfses" ) ) {
+            New-Item -ItemType Directory -Name wsl-rootfses
+          }
+          if ( -not ( Test-Path -PathType Leaf -Path "wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" ) ) {
+            Write-Output "Downloading Ubuntu 24.04 amd64 rootfs for WSL..."
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
+            if ( ! $? ) {
+              exit 1
+            }
+          }
+
+      - name: Prepare Ubuntu 24.04 amd64 WSL instance
+        run: |
+          Write-Output "Preparing cloud-init configuration for WSL."
+          $DistroName = 'Test-Ubuntu-24.04'
+          $CloudInit = @"
+          #cloud-config
+
+          locale: en_US
+
+          users:
+            - name: snapd-ci
+              gecos: snapd-ci
+              primary_group: snapd-ci
+              lock_passwd: false
+              sudo: ALL=(ALL) NOPASSWD:ALL
+              groups:
+                - users
+                - admin
+                - lxd # For using LXD without sudo
+                - docker # For using Docker without sudo
+              shell: /bin/bash
+
+          runcmd:
+            - ln -fs `"`$(wslpath -u `'$($(Get-Location).Path)`')`" /srv/workspace
+          "@
+
+          if ( -not ( Test-Path -PathType Container -LiteralPath "$env:USERPROFILE\.cloud-init" ) ) {
+            New-Item -ItemType Directory -Path "$env:USERPROFILE" -Name ".cloud-init"
+            if ( ! $? ) {
+              Write-Error "Cannot create .cloud-init directory."
+              exit 1
+            }
+          }
+          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)\.cloud-init" -Name "$DistroName.user-data" -Value "$CloudInit"
+          if ( ! $? ) {
+            Write-Error "Cannot create cloud-init user-data file for ${DistroName}."
+            exit 1
+          }
+
+          Write-Output "Preparing WSL configuration file."
+          $WslConfig = @'
+          [wsl2]
+          vmIdleTimeout = -1
+          '@
+
+          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)" -Name ".wslconfig" -Value "$WslConfig"
+          if ( ! $? ) {
+            Write-Error "Cannot create WSL configuration file."
+            exit 1
+          }
+
+          Write-Output "Terminating and removing old instance."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
+          # This may fail if there's no running instance
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
+          # This may fail if there's no instance to remove
+
+          Write-Output "Importing Ubuntu 24.04 RootFS into WSL..."
+          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
+            New-Item -ItemType Directory -Name "wsl-vms"
+            if ( ! $? ) {
+              Write-Error "Cannot create wsl-vms directory."
+              exit 1
+            }
+          }
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\ubuntu-24.04\ .\wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz --version 2"
+          if ( ! $? ) {
+            Write-Error "Cannot import ${DistroName} into WSL."
+            exit 1
+          }
+
+          Write-Output "Starting Ubuntu 24.04 and waiting for cloud-init to finish..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init status --wait"
+          if ( ! $? ) {
+            Write-Error "Cannot start ${DistroName} and finish cloud-init process."
+            exit 1
+          }
+
+          Write-Output "Validating cloud-init schema."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init schema --system"
+          if ( ! $? ) {
+            Write-Error "Cannot validate cloud-init schema of ${DistroName}."
+            exit 1
+          }
+
+      - name: Cache snaps necessary for testing on amd64
+        id: cache-snaps
+        uses: actions/cache@v4
+        with:
+          path: snaps/
+          key: snaps-amd64
+
+      - name: Download snaps necessary for testing on amd64
+        if: steps.cache-snaps.outputs.cache-hit != 'true'
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+          Write-Output "Downloading snaps necessary for testing..."
+          if ( -not ( Test-Path -PathType Container -LiteralPath "snaps" ) ) {
+            New-Item -ItemType Directory -Name "snaps"
+            if ( ! $? ) {
+              Write-Error "Cannot create snaps directory."
+              exit 1
+            }
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps snapd"
+          if ( ! $? ) {
+            Write-Error "Cannot download snapd snap."
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps bare"
+          if ( ! $? ) {
+            Write-Error "Cannot download bare snap."
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps core22"
+          if ( ! $? ) {
+            Write-Error "Cannot download core22 snap."
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps hello"
+          if ( ! $? ) {
+            Write-Error "Cannot download hello snap."
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps snapcraft"
+          if ( ! $? ) {
+            Write-Error "Cannot download snapcraft snap."
+            exit 1
+          }
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps lxd"
+          if ( ! $? ) {
+            Write-Error "Cannot download lxd snap."
+            exit 1
+          }
+
+      - name: Install snapd snap
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+          $SnapName = 'snapd'
+
+          Write-Output "Starting snapd service."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl start snapd"
+          if ( ! $? ) {
+            Write-Error "Cannot start snapd service."
+            exit 1
+          }
+
+          Write-Output "Querying status of snapd service and socket."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
+          if ( ! $? ) {
+            Write-Error "Cannot query status of snapd service and socket."
+            exit 1
+          }
+
+          Write-Output "Version of snapd in the rootfs."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
+          if ( ! $? ) {
+            Write-Error "Cannot query snapd version."
+            exit 1
+          }
+
+          Write-Output "Acknowledging assertion of ${SnapName}."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
+          if ( ! $? ) {
+            Write-Error "Cannot ack assertion of ${SnapName}."
+            exit 1
+          }
+
+          Write-Output "Installing snapd as a snap."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/${SnapName}_*.snap"
+          if ( ! $? ) {
+            Write-Error "Cannot install snap ${SnapName}."
+            exit 1
+          }
+
+          Write-Output "Version of snapd from the snapd snap."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
+          if ( ! $? ) {
+            Write-Error "Cannot query snapd version."
+            exit 1
+          }
+
+          Write-Output "Querying status of snapd service and socket after snapd snap is installed."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
+          if ( ! $? ) {
+            Write-Error "Cannot query status of snapd service and socket."
+            exit 1
+          }
+
+      - name: Install core22 base snap
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+          $SnapName = 'core22'
+
+          Write-Output "Acknowledging assertion of ${SnapName}."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
+          if ( ! $? ) {
+            Write-Error "Cannot ack assertion of ${SnapName}."
+            exit 1
+          }
+
+          Write-Output "Installing ${SnapName} snap."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/${SnapName}_*.snap"
+          if ( ! $? ) {
+            Write-Error "Cannot install snap ${SnapName}."
+            exit 1
+          }
+
+      - name: Install hello snap
+        run: |
+          $DistroName = 'Test-Ubuntu-24.04'
+          $SnapName = 'hello'
+
+          Write-Output "Acknowledging assertion of ${SnapName}."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
+          if ( ! $? ) {
+            Write-Error "Cannot ack assertion of ${SnapName}."
+            exit 1
+          }
+
+          Write-Output "Installing ${SnapName} snap."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/${SnapName}_*.snap"
+          if ( ! $? ) {
+            Write-Error "Cannot install snap ${SnapName}."
+            exit 1
+          }
+
+      - name: Running hello snap application
+        run: |
+            $DistroName = 'Test-Ubuntu-24.04'
+            $SnapName = 'hello'
+
+            Write-Output "Running ${SnapName} application."
+            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap run ${SnapName}"
+            if ( ! $? ) {
+              Write-Error "Cannot run snap ${SnapName} application."
+              exit 1
+            }
+
+      - name: Terminate Ubuntu 24.04 amd64 WSL instance
+        if: always()
+        run: |
+          Write-Output "Terminating Ubuntu 24.04 amd64 WSL instance..."
+          $DistroName = 'Test-Ubuntu-24.04'
+
+          Write-Output "Terminating and removing old instance"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
