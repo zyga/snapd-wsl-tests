@@ -192,7 +192,7 @@ jobs:
             exit 1
           }
 
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps bare"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps snapcraft"
           if ( ! $? ) {
             Write-Error "Cannot download snapcraft snap."
             exit 1
