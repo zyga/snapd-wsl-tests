@@ -9,6 +9,7 @@
         "rootfs",
         "rootfses",
         "runcmd",
+        "snapcraft",
         "USERPROFILE",
         "wslconfig",
         "wslpath"
