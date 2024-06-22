@@ -301,7 +301,7 @@ jobs:
             $DistroName = 'Test-Ubuntu-24.04'
             $SnapName = 'hello'
 
-            Write-Output "Installing ${SnapName} snap assertion."
+            Write-Output "Running ${SnapName} application."
             Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap run ${SnapName}"
             if ( ! $? ) {
               Write-Error "Cannot run snap ${SnapName} application."
