@@ -230,7 +230,7 @@ jobs:
             exit 1
           }
 
-          Write-Output "Installing ${SnapName} snap assertion."
+          Write-Output "Acknowledging assertion of ${SnapName}."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
@@ -263,7 +263,7 @@ jobs:
           $DistroName = 'Test-Ubuntu-24.04'
           $SnapName = 'core22'
 
-          Write-Output "Installing ${SnapName} snap assertion."
+          Write-Output "Acknowledging assertion of ${SnapName}."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
@@ -282,7 +282,7 @@ jobs:
           $DistroName = 'Test-Ubuntu-24.04'
           $SnapName = 'hello'
 
-          Write-Output "Installing ${SnapName} snap assertion."
+          Write-Output "Acknowledging assertion of ${SnapName}."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
