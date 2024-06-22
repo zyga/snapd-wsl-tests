@@ -193,6 +193,7 @@ jobs:
       - name: Install snapd snap
         run: |
           $DistroName = 'Test-Ubuntu-24.04'
+          $SnapName = 'snapd'
 
           Write-Output "Starting snapd service."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl start snapd"
@@ -212,14 +213,14 @@ jobs:
             exit 1
           }
 
-          Write-Output "Installing snapd snap assertion."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/snapd_*.assert"
+          Write-Output "Installing ${SnapName} snap assertion."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             exit 1
           }
 
           Write-Output "Installing snapd as a snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/snapd_*.snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/${SnapName}_*.snap"
           if ( ! $? ) {
             exit 1
           }
