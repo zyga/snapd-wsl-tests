@@ -5,6 +5,8 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  schedule:
+    - cron: '0 23 * * *'
   workflow_dispatch:
 
 
@@ -314,6 +316,5 @@ jobs:
           Write-Output "Terminating Ubuntu 24.04 amd64 WSL instance..."
           $DistroName = 'Test-Ubuntu-24.04'
 
-          Write-Output "Terminating and removing old instance"
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
