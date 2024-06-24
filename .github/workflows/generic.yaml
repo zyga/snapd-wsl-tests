@@ -1,20 +1,30 @@
-name: Ubuntu-N
+name: Generic
+run-name: Smoke test ${{ inputs.distro-name }}
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  schedule:
-    - cron: '0 23 * * *'
-  workflow_dispatch:
-
+  workflow_call:
+    inputs:
+      distro-name:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+      wsl-rootfs-url:
+        required: true
+        type: string
+      wsl-rootfs-file:
+        required: true
+        type: string
+      wsl-distro-name:
+        required: true
+        type: string
 
 env:
   WSL_UTF8: "1"
 
 jobs:
-  build:
+  smoke:
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
@@ -41,34 +51,34 @@ jobs:
             exit 1
           }
 
-      - name: Cache Ubuntu 24.04 amd64 WSL RootFS
+      - name: Cache ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
         id: cache-rootfs
         uses: actions/cache@v4
         with:
-          path: wsl-rootfses/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
-          key: ubuntu-24.04-amd64
+          path: wsl-rootfses/${{ inputs.wsl-rootfs-file }}
+          key: ${{ inputs.wsl-distro-name }}-${{ inputs.architecture }}
 
-      - name: Download Ubuntu 24.04 amd64 WSL RootFS
+      - name: Download ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
         if: steps.cache-rootfs.outputs.cache-hit != 'true'
         run: |
-          $DistroName = 'Test-Ubuntu-24.04'
-          $DistroImageURL = 'https://cloud-images.ubuntu.com/wsl/noble/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          $DistroImageURL = '${{ inputs.wsl-rootfs-url }}'
           if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-rootfses" ) ) {
             New-Item -ItemType Directory -Name wsl-rootfses
           }
-          if ( -not ( Test-Path -PathType Leaf -Path "wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" ) ) {
-            Write-Output "Downloading Ubuntu 24.04 amd64 rootfs for WSL..."
+          if ( -not ( Test-Path -PathType Leaf -Path "wsl-rootfses\${{ inputs.wsl-rootfs-file }}" ) ) {
+            Write-Output "Downloading ${{ inputs.distro-name }} ${{ inputs.architecture }} rootfs for WSL..."
             $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz
+            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\${{ inputs.wsl-rootfs-file }}
             if ( ! $? ) {
               exit 1
             }
           }
 
-      - name: Prepare Ubuntu 24.04 amd64 WSL instance
+      - name: Prepare ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
         run: |
           Write-Output "Preparing cloud-init configuration for WSL."
-          $DistroName = 'Test-Ubuntu-24.04'
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $CloudInit = @"
           #cloud-config
 
@@ -122,7 +132,7 @@ jobs:
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
           # This may fail if there's no instance to remove
 
-          Write-Output "Importing Ubuntu 24.04 RootFS into WSL..."
+          Write-Output "Importing ${{ inputs.distro-name }} RootFS into WSL..."
           if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
             New-Item -ItemType Directory -Name "wsl-vms"
             if ( ! $? ) {
@@ -130,13 +140,13 @@ jobs:
               exit 1
             }
           }
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\ubuntu-24.04\ .\wsl-rootfses\ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz --version 2"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\${{ inputs.wsl-distro-name }}\ .\wsl-rootfses\${{ inputs.wsl-rootfs-file }} --version 2"
           if ( ! $? ) {
             Write-Error "Cannot import ${DistroName} into WSL."
             exit 1
           }
 
-          Write-Output "Starting Ubuntu 24.04 and waiting for cloud-init to finish..."
+          Write-Output "Starting ${{ inputs.distro-name }} and waiting for cloud-init to finish..."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init status --wait"
           if ( ! $? ) {
             Write-Error "Cannot start ${DistroName} and finish cloud-init process."
@@ -150,17 +160,17 @@ jobs:
             exit 1
           }
 
-      - name: Cache snaps necessary for testing on amd64
+      - name: Cache snaps necessary for testing on ${{ inputs.architecture }}
         id: cache-snaps
         uses: actions/cache@v4
         with:
           path: snaps/
           key: snaps-amd64
 
-      - name: Download snaps necessary for testing on amd64
+      - name: Download snaps necessary for testing on ${{ inputs.architecture }}
         if: steps.cache-snaps.outputs.cache-hit != 'true'
         run: |
-          $DistroName = 'Test-Ubuntu-24.04'
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           Write-Output "Downloading snaps necessary for testing..."
           if ( -not ( Test-Path -PathType Container -LiteralPath "snaps" ) ) {
             New-Item -ItemType Directory -Name "snaps"
@@ -208,7 +218,7 @@ jobs:
 
       - name: Install snapd snap
         run: |
-          $DistroName = 'Test-Ubuntu-24.04'
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $SnapName = 'snapd'
 
           Write-Output "Starting snapd service."
@@ -262,7 +272,7 @@ jobs:
 
       - name: Install core22 base snap
         run: |
-          $DistroName = 'Test-Ubuntu-24.04'
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $SnapName = 'core22'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
@@ -281,7 +291,7 @@ jobs:
 
       - name: Install hello snap
         run: |
-          $DistroName = 'Test-Ubuntu-24.04'
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $SnapName = 'hello'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
@@ -300,7 +310,7 @@ jobs:
 
       - name: Running hello snap application
         run: |
-            $DistroName = 'Test-Ubuntu-24.04'
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
             $SnapName = 'hello'
 
             Write-Output "Running ${SnapName} application."
@@ -310,11 +320,11 @@ jobs:
               exit 1
             }
 
-      - name: Terminate Ubuntu 24.04 amd64 WSL instance
+      - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
         if: always()
         run: |
-          Write-Output "Terminating Ubuntu 24.04 amd64 WSL instance..."
-          $DistroName = 'Test-Ubuntu-24.04'
+          Write-Output "Terminating ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance..."
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
 
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
