@@ -27,6 +27,14 @@ on:
         required: false
         type: boolean
         default: false
+      wsl-msi-url:
+        required: false
+        type: string
+        default: https://github.com/microsoft/WSL/releases/download/2.2.4/wsl.2.2.4.0.x64.msi
+      wsl-msi-file:
+        required: false
+        type: string
+        default: wsl.2.2.4.0.x64.msi
 
 env:
   WSL_UTF8: "1"
@@ -34,14 +42,31 @@ env:
 jobs:
   hello:
     name: "Smoke test with \"hello\" snap"
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install WSL
+      - name: Cache ${{ inputs.wsl-msi-file }} WSL installer
+        id: cache-wsl-installer
+        uses: actions/cache@v4
+        with:
+          path: ${{ inputs.wsl-msi-file }}
+          key: ${{ inputs.wsl-msi-file }}
+
+      - name: Download WSL installer version ${{ inputs.wsl-msi-file }}
+        if: steps.cache-wsl-installer.outputs.cache-hit != 'true'
         run: |
-          Write-Output "Installing WSL..."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--install --no-distribution --web-download"
+          $ProgressPreference = 'SilentlyContinue'
+          Write-Output "Downloading WSL installer release from GitHub..."
+          Invoke-WebRequest -Uri "${{ inputs.wsl-msi-url }}" -OutFile "${{ inputs.wsl-msi-file }}" -UseBasicParsing
+          if ( ! $? ) {
+            exit 1
+          }
+
+      - name: Install/Upgrade WSL
+        run: |
+          Write-Output "Running WSL installer..."
+          Start-Process -Wait -NoNewWindow msiexec.exe -ArgumentList "/quiet /passive /package ${{ inputs.wsl-msi-file }}"
           if ( ! $? ) {
             exit 1
           }

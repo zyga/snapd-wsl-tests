@@ -2,7 +2,14 @@
 
 Smoke testing snapd in WSL-2
 
-# GitHub Runner
+# Git Hub Runner
+
+## GitHub Runner (standard)
+
+There's nothing you have to do. The workflow work out-of-the box on
+`windows-latest` runners.
+
+## GitHub Runner (self-hosted)
 
 If you are unfamiliar with Windows, the following set of instructions might help:
 
