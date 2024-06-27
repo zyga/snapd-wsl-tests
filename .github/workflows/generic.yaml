@@ -78,7 +78,7 @@ jobs:
           if ( -not ( Test-Path -PathType Leaf -Path "wsl-rootfses\${{ inputs.wsl-rootfs-file }}" ) ) {
             Write-Output "Downloading ${{ inputs.distro-name }} ${{ inputs.architecture }} rootfs for WSL..."
             $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\${{ inputs.wsl-rootfs-file }}
+            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\${{ inputs.wsl-rootfs-file }} -UseBasicParsing
             if ( ! $? ) {
               exit 1
             }
