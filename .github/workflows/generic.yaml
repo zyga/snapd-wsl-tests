@@ -1,5 +1,5 @@
-name: Generic
-run-name: Smoke test ${{ inputs.distro-name }}
+name: Smoke
+run-name: Smoke test with hello on ${{ inputs.distro-name }}
 
 on:
   workflow_call:
@@ -32,7 +32,8 @@ env:
   WSL_UTF8: "1"
 
 jobs:
-  smoke:
+  hello:
+    name: "Smoke test with \"hello\" snap"
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
