@@ -363,7 +363,7 @@ jobs:
             exit 1
           }
 
-      - name: Running hello snap application
+      - name: Run hello snap application
         run: |
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
             $SnapName = 'hello'
