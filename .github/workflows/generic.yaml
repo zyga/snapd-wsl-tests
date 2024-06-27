@@ -54,7 +54,7 @@ jobs:
           key: ${{ inputs.wsl-msi-file }}
 
       - name: Download WSL installer version ${{ inputs.wsl-msi-file }}
-        if: steps.cache-wsl-installer.outputs.cache-hit != 'true'
+        if: ${{ steps.cache-wsl-installer.outputs.cache-hit != 'true' }}
         run: |
           $ProgressPreference = 'SilentlyContinue'
           Write-Output "Downloading WSL installer release from GitHub..."
@@ -93,7 +93,7 @@ jobs:
           key: ${{ inputs.wsl-distro-name }}-${{ inputs.architecture }}
 
       - name: Download ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
-        if: steps.cache-rootfs.outputs.cache-hit != 'true'
+        if: ${{ steps.cache-rootfs.outputs.cache-hit != 'true' }}
         run: |
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $DistroImageURL = '${{ inputs.wsl-rootfs-url }}'
@@ -146,7 +146,7 @@ jobs:
             }
 
       - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to use Systemd
-        if: inputs.wsl-enable-systemd == 'true'
+        if: ${{ fromJSON(inputs.wsl-enable-systemd) }}
         run: |
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           Write-Output "Enabling systemd boot in ${{ inputs.distro-name }}..."
@@ -157,7 +157,7 @@ jobs:
           }
 
       - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to support cloud-init (hacks)
-        if: inputs.wsl-enable-cloud-init-hack == 'true'
+        if: ${{ fromJSON(inputs.wsl-enable-cloud-init-hack) }}
         run: |
           Write-Output "Adding ubuntu-wsl-dev PPA to ${{ inputs.distro-name }}..."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec add-apt-repository -y ppa:ubuntu-wsl-dev/ppa"
@@ -248,7 +248,7 @@ jobs:
           key: snaps-amd64
 
       - name: Download snaps necessary for testing on ${{ inputs.architecture }}
-        if: steps.cache-snaps.outputs.cache-hit != 'true'
+        if: ${{ steps.cache-snaps.outputs.cache-hit != 'true' }}
         run: |
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           Write-Output "Downloading snaps necessary for testing..."
