@@ -19,6 +19,14 @@ on:
       wsl-distro-name:
         required: true
         type: string
+      wsl-enable-systemd:
+        required: false
+        type: boolean
+        default: false
+      wsl-enable-cloud-init-hack:
+        required: false
+        type: boolean
+        default: false
 
 env:
   WSL_UTF8: "1"
@@ -75,7 +83,76 @@ jobs:
             }
           }
 
-      - name: Prepare ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
+      - name: Import ${{ inputs.distro-name }} ${{ inputs.architecture }} into WSL
+        run: |
+            $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+
+            Write-Output "Preparing WSL configuration file."
+            $WslConfig = @'
+            [wsl2]
+            vmIdleTimeout = -1
+            '@
+
+            New-Item -Force -ItemType File -Path "$($env:USERPROFILE)" -Name ".wslconfig" -Value "$WslConfig"
+            if ( ! $? ) {
+              Write-Error "Cannot create WSL configuration file."
+              exit 1
+            }
+
+            Write-Output "Terminating and removing old instance."
+            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
+            # This may fail if there's no running instance
+            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
+            # This may fail if there's no instance to remove
+
+            Write-Output "Importing ${{ inputs.distro-name }} RootFS into WSL..."
+            if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
+              New-Item -ItemType Directory -Name "wsl-vms"
+              if ( ! $? ) {
+                Write-Error "Cannot create wsl-vms directory."
+                exit 1
+              }
+            }
+            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\${{ inputs.wsl-distro-name }}\ .\wsl-rootfses\${{ inputs.wsl-rootfs-file }} --version 2"
+            if ( ! $? ) {
+              Write-Error "Cannot import ${DistroName} into WSL."
+              exit 1
+            }
+
+      - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to use Systemd
+        if: inputs.wsl-enable-systemd == 'true'
+        run: |
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          Write-Output "Enabling systemd boot in ${{ inputs.distro-name }}..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / printf '[boot]\nsystemd=true\n' >/etc/wsl.conf"
+          if ( ! $? ) {
+            Write-Error "Cannot enable systemd boot in ${DistroName} into WSL."
+            exit 1
+          }
+
+      - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to support cloud-init (hacks)
+        if: inputs.wsl-enable-cloud-init-hack == 'true'
+        run: |
+          Write-Output "Adding ubuntu-wsl-dev PPA to ${{ inputs.distro-name }}..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec add-apt-repository -y ppa:ubuntu-wsl-dev/ppa"
+          if ( ! $? ) {
+            Write-Error "Cannot add ubuntu-wsl-dev PPA to ${DistroName} into WSL."
+            exit 1
+          }
+          Write-Output "Installing wsl-setup and cloud-init in ${{ inputs.distro-name }}..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec env DEBIAN_FRONTEND=noninteractive apt install -y wsl-setup cloud-init"
+          if ( ! $? ) {
+            Write-Error "Cannot install wsl-setup and cloud-init in ${DistroName} into WSL."
+            exit 1
+          }
+          Write-Output "Installing enabling cloud-init.service and cloud-init-local.service in ${{ inputs.distro-name }}..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec systemctl --root=/ enable cloud-init.service cloud-init-local.service"
+          if ( ! $? ) {
+            Write-Error "Cannot enable cloud-init.service and cloud-init-local.service in ${DistroName} into WSL."
+            exit 1
+          }
+
+      - name: Setup ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance with cloud-init
         run: |
           Write-Output "Preparing cloud-init configuration for WSL."
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
@@ -114,36 +191,13 @@ jobs:
             exit 1
           }
 
-          Write-Output "Preparing WSL configuration file."
-          $WslConfig = @'
-          [wsl2]
-          vmIdleTimeout = -1
-          '@
-
-          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)" -Name ".wslconfig" -Value "$WslConfig"
-          if ( ! $? ) {
-            Write-Error "Cannot create WSL configuration file."
-            exit 1
-          }
-
-          Write-Output "Terminating and removing old instance."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
-          # This may fail if there's no running instance
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
-          # This may fail if there's no instance to remove
-
-          Write-Output "Importing ${{ inputs.distro-name }} RootFS into WSL..."
-          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
-            New-Item -ItemType Directory -Name "wsl-vms"
+          if ( "$${{ inputs.wsl-enable-cloud-init-hack }}" -eq "true" || "$${{ inputs.wsl-enable-systemd }}" -eq "true" ) {
+            Write-Output "Terminating ${{ inputs.distro-name }} for earlier changes to take effect..."
+            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
             if ( ! $? ) {
-              Write-Error "Cannot create wsl-vms directory."
+              Write-Error "Cannot terminate ${DistroName} instance."
               exit 1
             }
-          }
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\${{ inputs.wsl-distro-name }}\ .\wsl-rootfses\${{ inputs.wsl-rootfs-file }} --version 2"
-          if ( ! $? ) {
-            Write-Error "Cannot import ${DistroName} into WSL."
-            exit 1
           }
 
           Write-Output "Starting ${{ inputs.distro-name }} and waiting for cloud-init to finish..."

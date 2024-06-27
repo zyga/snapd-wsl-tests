@@ -13,6 +13,9 @@ jobs:
   ubuntu:
     strategy:
       matrix:
+        lts: [false]
+        wsl-enable-systemd: [false]
+        wsl-enable-cloud-init-hack: [false]
         include:
           - codename: jammy
             version-id: "22.04"
@@ -21,7 +24,6 @@ jobs:
             wsl-enable-cloud-init-hack: true
           - codename: noble
             version-id: "24.04"
-            lts: true
     uses: ./.github/workflows/generic.yaml
     with:
       distro-name: Ubuntu ${{ matrix.version-id }}${{ matrix.lts == true && 'LTS' || '' }}
@@ -29,3 +31,5 @@ jobs:
       wsl-rootfs-url: https://cloud-images.ubuntu.com/wsl/${{ matrix.codename }}/current/ubuntu-${{ matrix.codename }}-wsl-amd64-wsl.rootfs.tar.gz
       wsl-rootfs-file: ubuntu-${{ matrix.codename }}-wsl-amd64-wsl.rootfs.tar.gz
       wsl-distro-name: Ubuntu-${{ matrix.version-id }}
+      wsl-enable-systemd: ${{ matrix.wsl-enable-systemd }}
+      wsl-enable-cloud-init-hack: ${{ matrix.wsl-enable-cloud-init-hack }}
