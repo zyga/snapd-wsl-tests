@@ -1,0 +1,45 @@
+name: latest/stable
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+jobs:
+  ubuntu:
+    name: "Ubuntu ${{ matrix.version-id }}${{ matrix.lts == true && ' LTS' || '' }}"
+    strategy:
+      matrix:
+        lts: [false]
+        wsl-enable-systemd: [false]
+        wsl-enable-cloud-init-hack: [false]
+        include:
+          - codename: jammy
+            version-id: "22.04"
+            lts: true
+            wsl-enable-systemd: true
+            wsl-enable-cloud-init-hack: true
+          - codename: noble
+            version-id: "24.04"
+    uses: ./.github/workflows/generic.yaml
+    with:
+      distro-name: Ubuntu ${{ matrix.version-id }}${{ matrix.lts == true && ' LTS' || '' }}
+      architecture: amd64
+      wsl-rootfs-url: https://cloud-images.ubuntu.com/wsl/${{ matrix.codename }}/current/ubuntu-${{ matrix.codename }}-wsl-amd64-wsl.rootfs.tar.gz
+      wsl-rootfs-file: ubuntu-${{ matrix.codename }}-wsl-amd64-wsl.rootfs.tar.gz
+      wsl-distro-name: Ubuntu-${{ matrix.version-id }}
+      wsl-enable-systemd: ${{ matrix.wsl-enable-systemd }}
+      wsl-enable-cloud-init-hack: ${{ matrix.wsl-enable-cloud-init-hack }}
+  ubuntu-beta:
+    name: "Ubuntu 22.04 LTS (beta image)"
+    uses: ./.github/workflows/generic.yaml
+    with:
+      distro-name: Ubuntu 22.04 LTS (beta image)
+      architecture: amd64
+      wsl-rootfs-url: https://launchpad.net/~ubuntu-wsl-dev/+livefs/ubuntu/jammy/wsl/+build/642051/+files/livecd.ubuntu-wsl.ubuntu22.04lts.rootfs.tar.gz
+      wsl-rootfs-file: livecd.ubuntu-wsl.ubuntu22.04lts.rootfs.tar.gz
+      wsl-distro-name: Ubuntu-22.04-Beta
