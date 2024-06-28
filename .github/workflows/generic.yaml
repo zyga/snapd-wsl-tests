@@ -56,6 +56,7 @@ jobs:
       - name: Download WSL installer version ${{ inputs.wsl-msi-file }}
         if: ${{ steps.cache-wsl-installer.outputs.cache-hit != 'true' }}
         run: |
+          Set-StrictMode -version latest
           $ProgressPreference = 'SilentlyContinue'
           Write-Output "Downloading WSL installer release from GitHub..."
           Invoke-WebRequest -Uri "${{ inputs.wsl-msi-url }}" -OutFile "${{ inputs.wsl-msi-file }}" -UseBasicParsing
@@ -65,6 +66,7 @@ jobs:
 
       - name: Install/Upgrade WSL
         run: |
+          Set-StrictMode -version latest
           Write-Output "Running WSL installer..."
           Start-Process -Wait -NoNewWindow msiexec.exe -ArgumentList "/quiet /passive /package ${{ inputs.wsl-msi-file }}"
           if ( ! $? ) {
@@ -95,6 +97,7 @@ jobs:
       - name: Download ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
         if: ${{ steps.cache-rootfs.outputs.cache-hit != 'true' }}
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $DistroImageURL = '${{ inputs.wsl-rootfs-url }}'
           if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-rootfses" ) ) {
@@ -111,6 +114,7 @@ jobs:
 
       - name: Import ${{ inputs.distro-name }} ${{ inputs.architecture }} into WSL
         run: |
+            Set-StrictMode -version latest
             $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
 
             Write-Output "Preparing WSL configuration file."
@@ -148,6 +152,7 @@ jobs:
       - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to use Systemd
         if: ${{ fromJSON(inputs.wsl-enable-systemd) }}
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           Write-Output "Enabling systemd boot in ${{ inputs.distro-name }}..."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / printf '[boot]\nsystemd=true\n' >/etc/wsl.conf"
@@ -159,6 +164,7 @@ jobs:
       - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to support cloud-init (hacks)
         if: ${{ fromJSON(inputs.wsl-enable-cloud-init-hack) }}
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           Write-Output "Adding ubuntu-wsl-dev PPA to ${{ inputs.distro-name }}..."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec add-apt-repository -y ppa:ubuntu-wsl-dev/ppa"
@@ -181,6 +187,7 @@ jobs:
 
       - name: Setup ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance with cloud-init
         run: |
+          Set-StrictMode -version latest
           Write-Output "Preparing cloud-init configuration for WSL."
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $CloudInit = @"
@@ -251,6 +258,7 @@ jobs:
       - name: Download snaps necessary for testing on ${{ inputs.architecture }}
         if: ${{ steps.cache-snaps.outputs.cache-hit != 'true' }}
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           Write-Output "Downloading snaps necessary for testing..."
           if ( -not ( Test-Path -PathType Container -LiteralPath "snaps" ) ) {
@@ -299,6 +307,7 @@ jobs:
 
       - name: Install snapd snap
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $SnapName = 'snapd'
 
@@ -353,6 +362,7 @@ jobs:
 
       - name: Install core22 base snap
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $SnapName = 'core22'
 
@@ -372,6 +382,7 @@ jobs:
 
       - name: Install hello snap
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $SnapName = 'hello'
 
@@ -391,6 +402,7 @@ jobs:
 
       - name: Run hello snap application
         run: |
+          Set-StrictMode -version latest
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           $SnapName = 'hello'
 
@@ -404,6 +416,7 @@ jobs:
       - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
         if: always()
         run: |
+          Set-StrictMode -version latest
           Write-Output "Terminating ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance..."
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
 
