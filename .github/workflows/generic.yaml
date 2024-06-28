@@ -159,6 +159,7 @@ jobs:
       - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to support cloud-init (hacks)
         if: ${{ fromJSON(inputs.wsl-enable-cloud-init-hack) }}
         run: |
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
           Write-Output "Adding ubuntu-wsl-dev PPA to ${{ inputs.distro-name }}..."
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec add-apt-repository -y ppa:ubuntu-wsl-dev/ppa"
           if ( ! $? ) {
