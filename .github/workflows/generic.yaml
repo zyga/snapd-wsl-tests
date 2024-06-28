@@ -391,14 +391,14 @@ jobs:
       - name: Run hello snap application
         run: |
           $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
-            $SnapName = 'hello'
+          $SnapName = 'hello'
 
-            Write-Output "Running ${SnapName} application."
-            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap run ${SnapName}"
-            if ( ! $? ) {
-              Write-Error "Cannot run snap ${SnapName} application."
-              exit 1
-            }
+          Write-Output "Running ${SnapName} application."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap run ${SnapName}"
+          if ( ! $? ) {
+            Write-Error "Cannot run snap ${SnapName} application."
+            exit 1
+          }
 
       - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
         if: always()
