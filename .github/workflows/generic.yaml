@@ -114,40 +114,40 @@ jobs:
 
       - name: Import ${{ inputs.distro-name }} ${{ inputs.architecture }} into WSL
         run: |
-            Set-StrictMode -version latest
-            $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          Set-StrictMode -version latest
+          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
 
-            Write-Output "Preparing WSL configuration file."
-            $WslConfig = @'
-            [wsl2]
-            vmIdleTimeout = -1
-            '@
+          Write-Output "Preparing WSL configuration file."
+          $WslConfig = @'
+          [wsl2]
+          vmIdleTimeout = -1
+          '@
 
-            New-Item -Force -ItemType File -Path "$($env:USERPROFILE)" -Name ".wslconfig" -Value "$WslConfig"
+          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)" -Name ".wslconfig" -Value "$WslConfig"
+          if ( ! $? ) {
+            Write-Error "Cannot create WSL configuration file."
+            exit 1
+          }
+
+          Write-Output "Terminating and removing old instance."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
+          # This may fail if there's no running instance
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
+          # This may fail if there's no instance to remove
+
+          Write-Output "Importing ${{ inputs.distro-name }} RootFS into WSL..."
+          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
+            New-Item -ItemType Directory -Name "wsl-vms"
             if ( ! $? ) {
-              Write-Error "Cannot create WSL configuration file."
+              Write-Error "Cannot create wsl-vms directory."
               exit 1
             }
-
-            Write-Output "Terminating and removing old instance."
-            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
-            # This may fail if there's no running instance
-            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
-            # This may fail if there's no instance to remove
-
-            Write-Output "Importing ${{ inputs.distro-name }} RootFS into WSL..."
-            if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
-              New-Item -ItemType Directory -Name "wsl-vms"
-              if ( ! $? ) {
-                Write-Error "Cannot create wsl-vms directory."
-                exit 1
-              }
-            }
-            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\${{ inputs.wsl-distro-name }}\ .\wsl-rootfses\${{ inputs.wsl-rootfs-file }} --version 2"
-            if ( ! $? ) {
-              Write-Error "Cannot import ${DistroName} into WSL."
-              exit 1
-            }
+          }
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\${{ inputs.wsl-distro-name }}\ .\wsl-rootfses\${{ inputs.wsl-rootfs-file }} --version 2"
+          if ( ! $? ) {
+            Write-Error "Cannot import ${DistroName} into WSL."
+            exit 1
+          }
 
       - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to use Systemd
         if: ${{ fromJSON(inputs.wsl-enable-systemd) }}
