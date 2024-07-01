@@ -34,12 +34,3 @@ jobs:
       wsl-distro-name: Ubuntu-${{ matrix.version-id }}
       wsl-enable-systemd: ${{ matrix.wsl-enable-systemd }}
       wsl-enable-cloud-init-hack: ${{ matrix.wsl-enable-cloud-init-hack }}
-  ubuntu-beta:
-    name: "Ubuntu 22.04 LTS (beta image)"
-    uses: ./.github/workflows/generic.yaml
-    with:
-      distro-name: Ubuntu 22.04 LTS (beta image)
-      architecture: amd64
-      wsl-rootfs-url: https://launchpad.net/~ubuntu-wsl-dev/+livefs/ubuntu/jammy/wsl/+build/642051/+files/livecd.ubuntu-wsl.ubuntu22.04lts.rootfs.tar.gz
-      wsl-rootfs-file: livecd.ubuntu-wsl.ubuntu22.04lts.rootfs.tar.gz
-      wsl-distro-name: Ubuntu-22.04-Beta
