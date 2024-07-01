@@ -51,8 +51,8 @@ inputs:
           shell: /bin/bash
 
       runcmd:
-        - ln -fs `"`$(wslpath -u `'$($(Get-Location).Path)`')`" /srv/github-workspace
-      "@
+        # This is quoted to avoid forward slashes from windows paths from messing up the value.
+        - ln -fs "$(wslpath -u '${{ github.workspace }}')" /srv/github-workspace
 
 branding:
   icon: cloud
