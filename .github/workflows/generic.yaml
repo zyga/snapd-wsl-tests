@@ -52,7 +52,7 @@ jobs:
       - name: Import ${{ inputs.wsl-distro-name }} into WSL and run cloud-init
         uses: ./.github/actions/setup-distro
         with:
-          wsl-distro-name: Test-${{ inputs.wsl-distro-name }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
           wsl-rootfs-url: ${{ inputs.wsl-rootfs-url }}
           wsl-rootfs-file: ${{ inputs.wsl-rootfs-file }}
           wsl-enable-systemd: ${{ inputs.wsl-enable-systemd }}
@@ -62,42 +62,42 @@ jobs:
         uses: ./.github/actions/download-snap
         with:
           snap-name: snapd
-          distribution: Test-${{ inputs.wsl-distro-name }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download bare snap
         uses: ./.github/actions/download-snap
         with:
           snap-name: bare
-          distribution: Test-${{ inputs.wsl-distro-name }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download core22 snap
         uses: ./.github/actions/download-snap
         with:
           snap-name: core22
-          distribution: Test-${{ inputs.wsl-distro-name }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download hello snap
         uses: ./.github/actions/download-snap
         with:
           snap-name: hello
-          distribution: Test-${{ inputs.wsl-distro-name }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download snapcraft snap
         uses: ./.github/actions/download-snap
         with:
           snap-name: snapcraft
-          distribution: Test-${{ inputs.wsl-distro-name }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download lxd snap
         uses: ./.github/actions/download-snap
         with:
           snap-name: lxd
-          distribution: Test-${{ inputs.wsl-distro-name }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Install snapd snap
         run: |
           Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          $DistroName = '${{ inputs.wsl-distro-name }}'
           $SnapName = 'snapd'
 
           Write-Output "Starting snapd service."
@@ -152,7 +152,7 @@ jobs:
       - name: Install core22 base snap
         run: |
           Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          $DistroName = '${{ inputs.wsl-distro-name }}'
           $SnapName = 'core22'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
@@ -172,7 +172,7 @@ jobs:
       - name: Install hello snap
         run: |
           Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          $DistroName = '${{ inputs.wsl-distro-name }}'
           $SnapName = 'hello'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
@@ -192,7 +192,7 @@ jobs:
       - name: Run hello snap application
         run: |
           Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          $DistroName = '${{ inputs.wsl-distro-name }}'
           $SnapName = 'hello'
 
           Write-Output "Running ${SnapName} application."
@@ -207,7 +207,7 @@ jobs:
         run: |
           Set-StrictMode -version latest
           Write-Output "Terminating ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance..."
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
+          $DistroName = '${{ inputs.wsl-distro-name }}'
 
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
