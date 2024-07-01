@@ -1,11 +1,11 @@
 name: Download snap package
 author: Zygmunt Krynicki
 description: |
-  Download snap action using an initialized WSL distribution
+  Download snap action using an initialized WSL wsl-distro-name
   and store the file in a directory on the Windows host.
 inputs:
-  distribution:
-    description: Name of the WSL distribution to use
+  wsl-distro-name:
+    description: Name of the WSL wsl-distro-name to use
     required: true
   snap-name:
     description: Name of the snap in the store
@@ -37,7 +37,7 @@ runs:
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         SNAPS_DIR: ${{ inputs.snaps-dir }}
-        DISTRO_NAME: ${{ inputs.distribution }}
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
       run: |
         Set-StrictMode -version latest
         Write-Output "Downloading ${Env:SNAP_NAME} snap..."
@@ -49,7 +49,7 @@ runs:
           }
         }
         $wslArgs=@(
-          "--distribution ${Env:DISTRO_NAME}"
+          "--distribution ${Env:WSL_DISTRO_NAME}"
           "--user root"
           "--cd ~"
           "snap download --target-directory=`$(wslpath -u '${Env:GITHUB_WORKSPACE}\${Env:SNAPS_DIR}') ${Env:SNAP_NAME}"
