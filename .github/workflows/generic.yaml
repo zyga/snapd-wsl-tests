@@ -49,166 +49,14 @@ jobs:
       - name: Install WSL
         uses: ./.github/actions/install-wsl
 
-      - name: Cache ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
-        id: cache-rootfs
-        uses: actions/cache@v4
+      - name: Import ${{ inputs.wsl-distro-name }} into WSL and run cloud-init
+        uses: ./.github/actions/setup-distro
         with:
-          path: wsl-rootfses/${{ inputs.wsl-rootfs-file }}
-          key: ${{ inputs.wsl-distro-name }}-${{ inputs.architecture }}
-
-      - name: Download ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
-        if: ${{ steps.cache-rootfs.outputs.cache-hit != 'true' }}
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
-          $DistroImageURL = '${{ inputs.wsl-rootfs-url }}'
-          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-rootfses" ) ) {
-            New-Item -ItemType Directory -Name wsl-rootfses
-          }
-          if ( -not ( Test-Path -PathType Leaf -Path "wsl-rootfses\${{ inputs.wsl-rootfs-file }}" ) ) {
-            Write-Output "Downloading ${{ inputs.distro-name }} ${{ inputs.architecture }} rootfs for WSL..."
-            $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest -Uri "$DistroImageURL" -OutFile wsl-rootfses\${{ inputs.wsl-rootfs-file }} -UseBasicParsing
-            if ( ! $? ) {
-              exit 1
-            }
-          }
-
-      - name: Import ${{ inputs.distro-name }} ${{ inputs.architecture }} into WSL
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
-
-          Write-Output "Preparing WSL configuration file."
-          $WslConfig = @'
-          [wsl2]
-          vmIdleTimeout = -1
-          '@
-
-          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)" -Name ".wslconfig" -Value "$WslConfig"
-          if ( ! $? ) {
-            Write-Error "Cannot create WSL configuration file."
-            exit 1
-          }
-
-          Write-Output "Terminating and removing old instance."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
-          # This may fail if there's no running instance
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
-          # This may fail if there's no instance to remove
-
-          Write-Output "Importing ${{ inputs.distro-name }} RootFS into WSL..."
-          if ( -not ( Test-Path -PathType Container -LiteralPath "wsl-vms" ) ) {
-            New-Item -ItemType Directory -Name "wsl-vms"
-            if ( ! $? ) {
-              Write-Error "Cannot create wsl-vms directory."
-              exit 1
-            }
-          }
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--import $DistroName .\wsl-vms\${{ inputs.wsl-distro-name }}\ .\wsl-rootfses\${{ inputs.wsl-rootfs-file }} --version 2"
-          if ( ! $? ) {
-            Write-Error "Cannot import ${DistroName} into WSL."
-            exit 1
-          }
-
-      - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to use Systemd
-        if: ${{ fromJSON(inputs.wsl-enable-systemd) }}
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
-          Write-Output "Enabling systemd boot in ${{ inputs.distro-name }}..."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / printf '[boot]\nsystemd=true\n' >/etc/wsl.conf"
-          if ( ! $? ) {
-            Write-Error "Cannot enable systemd boot in ${DistroName} into WSL."
-            exit 1
-          }
-
-      - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to support cloud-init (hacks)
-        if: ${{ fromJSON(inputs.wsl-enable-cloud-init-hack) }}
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
-          Write-Output "Adding ubuntu-wsl-dev PPA to ${{ inputs.distro-name }}..."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec add-apt-repository -y ppa:ubuntu-wsl-dev/ppa"
-          if ( ! $? ) {
-            Write-Error "Cannot add ubuntu-wsl-dev PPA to ${DistroName} into WSL."
-            exit 1
-          }
-          Write-Output "Installing wsl-setup and cloud-init in ${{ inputs.distro-name }}..."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec env DEBIAN_FRONTEND=noninteractive apt install -y wsl-setup cloud-init"
-          if ( ! $? ) {
-            Write-Error "Cannot install wsl-setup and cloud-init in ${DistroName} into WSL."
-            exit 1
-          }
-          Write-Output "Installing enabling cloud-init.service and cloud-init-local.service in ${{ inputs.distro-name }}..."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd / --exec systemctl --root=/ enable cloud-init.service cloud-init-local.service"
-          if ( ! $? ) {
-            Write-Error "Cannot enable cloud-init.service and cloud-init-local.service in ${DistroName} into WSL."
-            exit 1
-          }
-
-      - name: Setup ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance with cloud-init
-        run: |
-          Set-StrictMode -version latest
-          Write-Output "Preparing cloud-init configuration for WSL."
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
-          $CloudInit = @"
-          #cloud-config
-
-          locale: en_US
-
-          users:
-            - name: snapd-ci
-              gecos: snapd-ci
-              primary_group: snapd-ci
-              lock_passwd: false
-              sudo: ALL=(ALL) NOPASSWD:ALL
-              groups:
-                - users
-                - admin
-                - lxd # For using LXD without sudo
-                - docker # For using Docker without sudo
-              shell: /bin/bash
-
-          runcmd:
-            - ln -fs `"`$(wslpath -u `'$($(Get-Location).Path)`')`" /srv/workspace
-          "@
-
-          if ( -not ( Test-Path -PathType Container -LiteralPath "$env:USERPROFILE\.cloud-init" ) ) {
-            New-Item -ItemType Directory -Path "$env:USERPROFILE" -Name ".cloud-init"
-            if ( ! $? ) {
-              Write-Error "Cannot create .cloud-init directory."
-              exit 1
-            }
-          }
-          New-Item -Force -ItemType File -Path "$($env:USERPROFILE)\.cloud-init" -Name "$DistroName.user-data" -Value "$CloudInit"
-          if ( ! $? ) {
-            Write-Error "Cannot create cloud-init user-data file for ${DistroName}."
-            exit 1
-          }
-
-          if ( "$${{ inputs.wsl-enable-cloud-init-hack }}" -eq "true" || "$${{ inputs.wsl-enable-systemd }}" -eq "true" ) {
-            Write-Output "Terminating ${{ inputs.distro-name }} for earlier changes to take effect..."
-            Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
-            if ( ! $? ) {
-              Write-Error "Cannot terminate ${DistroName} instance."
-              exit 1
-            }
-          }
-
-          Write-Output "Starting ${{ inputs.distro-name }} and waiting for cloud-init to finish..."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init status --wait"
-          if ( ! $? ) {
-            Write-Error "Cannot start ${DistroName} and finish cloud-init process."
-            exit 1
-          }
-
-          Write-Output "Validating cloud-init schema."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd /root --exec cloud-init schema --system"
-          if ( ! $? ) {
-            Write-Error "Cannot validate cloud-init schema of ${DistroName}."
-            exit 1
-          }
+          wsl-distro-name: Test-${{ inputs.wsl-distro-name }}
+          wsl-rootfs-url: ${{ inputs.wsl-rootfs-url }}
+          wsl-rootfs-file: ${{ inputs.wsl-rootfs-file }}
+          wsl-enable-systemd: ${{ inputs.wsl-enable-systemd }}
+          wsl-enable-cloud-init-hack: ${{ inputs.wsl-enable-cloud-init-hack }}
 
       - name: Download snapd snap
         uses: ./.github/actions/download-snap
@@ -274,14 +122,14 @@ jobs:
           }
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/github-workspace/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
             exit 1
           }
 
           Write-Output "Installing snapd as a snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/${SnapName}_*.snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/github-workspace/snaps/${SnapName}_*.snap"
           if ( ! $? ) {
             Write-Error "Cannot install snap ${SnapName}."
             exit 1
@@ -308,14 +156,14 @@ jobs:
           $SnapName = 'core22'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/github-workspace/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
             exit 1
           }
 
           Write-Output "Installing ${SnapName} snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/${SnapName}_*.snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/github-workspace/snaps/${SnapName}_*.snap"
           if ( ! $? ) {
             Write-Error "Cannot install snap ${SnapName}."
             exit 1
@@ -328,14 +176,14 @@ jobs:
           $SnapName = 'hello'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/workspace/snaps/${SnapName}_*.assert"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/github-workspace/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
             exit 1
           }
 
           Write-Output "Installing ${SnapName} snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/workspace/snaps/${SnapName}_*.snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/github-workspace/snaps/${SnapName}_*.snap"
           if ( ! $? ) {
             Write-Error "Cannot install snap ${SnapName}."
             exit 1

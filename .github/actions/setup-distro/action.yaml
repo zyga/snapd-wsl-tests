@@ -1,0 +1,257 @@
+name: Setup WSL wsl-distro-name
+author: Zygmunt Krynicki
+description: |
+  Download a WSL wsl-distro-name rootfs, import it into the system, optionally
+  enable systemd, and initialize with cloud-init.
+inputs:
+  wsl-distro-name:
+    description: Name of wsl-distro-name instance
+    required: true
+  wsl-rootfs-url:
+    description: URL of the root file system to import
+    required: true
+  wsl-rootfs-file:
+    description: Name the root file system to import
+    required: true
+  wsl-rootfses-dir:
+    description: Directory where downloaded root file systems are stored
+    default: wsl-rootfses
+    required: false
+  wsl-vms-dir:
+    description: Directory where imported virtual machine disks are stored
+    default: wsl-vms
+    required: false
+  wsl-enable-systemd:
+    description: Explicitly enable systemd boot in the wsl-distro-name
+    required: false
+    default: "false"
+  wsl-enable-cloud-init-hack:
+    description: Enable cloud-init for WSL (hack)
+    required: false
+    default: "false"
+  cloud-init-user-data:
+    description: Text of the cloud-init user-data file
+    required: false
+    default: |
+      #cloud-config
+
+      locale: en_US
+
+      users:
+        - name: user
+          gecos: user
+          primary_group: user
+          lock_passwd: false
+          sudo: ALL=(ALL) NOPASSWD:ALL
+          groups:
+            - users
+            - admin
+            - lxd # For using LXD without sudo
+            - docker # For using Docker without sudo
+          shell: /bin/bash
+
+      runcmd:
+        - ln -fs `"`$(wslpath -u `'$($(Get-Location).Path)`')`" /srv/github-workspace
+      "@
+
+branding:
+  icon: cloud
+  color: orange
+runs:
+  using: composite
+  steps:
+    - name: Cache ${{ inputs.wsl-rootfs-file }} WSL RootFS
+      id: cache-rootfs
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.wsl-rootfses-dir }}/${{ inputs.wsl-rootfs-file }}
+        key: ${{ inputs.wsl-rootfs-file }}
+
+    - name: Download ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
+      shell: pwsh
+      if: ${{ steps.cache-rootfs.outputs.cache-hit != 'true' }}
+      env:
+        WSL_ROOTFSES_DIR: ${{ inputs.wsl-rootfses-dir }}
+        WSL_ROOTFS_URL: ${{ inputs.wsl-rootfs-url }}
+        WSL_ROOTFS_FILE: ${{ inputs.wsl-rootfs-file }}
+      run: |
+        Set-StrictMode -version latest
+
+        if ( -not ( Test-Path -PathType Container -LiteralPath ${Env:WSL_ROOTFSES_DIR} ) ) {
+          New-Item -ItemType Directory -Name ${Env:WSL_ROOTFSES_DIR}
+        }
+
+        Write-Output "Downloading ${Env:WSL_ROOTFS_URL}..."
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri "${Env:WSL_ROOTFS_URL}" -OutFile "${Env:WSL_ROOTFSES_DIR}\${Env:WSL_ROOTFS_FILE}" -UseBasicParsing
+        if ( ! $? ) {
+          exit 1
+        }
+
+    - name: Import ${{ inputs.wsl-rootfs-file }} into WSL as ${{ inputs.wsl-distro-name }}
+      shell: pwsh
+      env:
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        WSL_ROOTFSES_DIR: ${{ inputs.wsl-rootfses-dir }}
+        WSL_ROOTFS_FILE: ${{ inputs.wsl-rootfs-file }}
+        WSL_VMS_DIR: ${{ inputs.wsl-vms-dir }}
+      run: |
+        Set-StrictMode -version latest
+
+        Write-Output "Preparing WSL configuration file."
+        $WslConfig = @'
+        [wsl2]
+        vmIdleTimeout = -1
+        '@
+
+        New-Item -Force -ItemType File -Path "${Env:USERPROFILE}" -Name ".wslconfig" -Value "$WslConfig"
+        if ( ! $? ) {
+          Write-Error "Cannot create WSL configuration file."
+          exit 1
+        }
+
+        if ( -not ( Test-Path -PathType Container -LiteralPath ${Env:WSL_VMS_DIR} ) ) {
+          New-Item -ItemType Directory -Name ${Env:WSL_VMS_DIR}
+          if ( ! $? ) {
+            Write-Error "Cannot create ${Env:WSL_VMS_DIR} directory."
+            exit 1
+          }
+        }
+
+        Write-Output "Importing ${Env:WSL_ROOTFS_FILE} RootFS into WSL..."
+        $wslArgs=@(
+          "--import ${Env:WSL_DISTRO_NAME}"
+          ".\${Env:WSL_VMS_DIR}\${Env:WSL_DISTRO_NAME}"
+          ".\${Env:WSL_ROOTFSES_DIR}\${Env:WSL_ROOTFS_FILE}"
+          "--version 2"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot import ${Env:WSL_DISTRO_NAME} into WSL."
+          exit 1
+        }
+
+    - name: Configure ${{ inputs.wsl-distro-name }} to use Systemd
+      shell: pwsh
+      if: ${{ fromJSON(inputs.wsl-enable-systemd) }}
+      env:
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+      run: |
+        Set-StrictMode -version latest
+
+        Write-Output "Enabling systemd boot in ${Env:WSL_DISTRO_NAME}..."
+        $wslArgs=@(
+          "--distribution ${Env:WSL_DISTRO_NAME}"
+          "--user root"
+          "--cd /"
+          "printf '[boot]\nsystemd=true\n' > /etc/wsl.conf"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot enable systemd boot in ${Env:WSL_DISTRO_NAME}."
+          exit 1
+        }
+
+    - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to support cloud-init (hacks)
+      shell: pwsh
+      if: ${{ fromJSON(inputs.wsl-enable-cloud-init-hack) }}
+      env:
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+      run: |
+        Set-StrictMode -version latest
+
+        Write-Output "Adding ubuntu-wsl-dev PPA to ${Env:WSL_DISTRO_NAME}..."
+        $wslArgs=@(
+          "--distribution ${Env:WSL_DISTRO_NAME}"
+          "--user root"
+          "--cd /"
+          "--exec add-apt-repository -y ppa:ubuntu-wsl-dev/ppa"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot add ubuntu-wsl-dev PPA to ${Env:WSL_DISTRO_NAME}."
+          exit 1
+        }
+
+        Write-Output "Installing wsl-setup and cloud-init in ${Env:WSL_DISTRO_NAME}..."
+        $wslArgs=@(
+          "--distribution ${Env:WSL_DISTRO_NAME}"
+          "--user root"
+          "--cd /"
+          "--exec env DEBIAN_FRONTEND=noninteractive apt install -y wsl-setup cloud-init"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot install wsl-setup and cloud-init in ${Env:WSL_DISTRO_NAME}."
+          exit 1
+        }
+
+        Write-Output "Installing enabling cloud-init.service and cloud-init-local.service in ${Env:WSL_DISTRO_NAME}..."
+        $wslArgs=@(
+          "--distribution ${Env:WSL_DISTRO_NAME}"
+          "--user root"
+          "--cd /"
+          "--exec systemctl --root=/ enable cloud-init.service cloud-init-local.service"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot enable cloud-init.service and cloud-init-local.service in ${Env:WSL_DISTRO_NAME}."
+          exit 1
+        }
+
+    - name: Setup ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance with cloud-init
+      shell: pwsh
+      env:
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        CLOUD_INIT_USER_DATA: ${{ inputs.cloud-init-user-data }}
+      run: |
+        Set-StrictMode -version latest
+
+        Write-Output "Preparing cloud-init configuration for WSL."
+        if ( -not ( Test-Path -PathType Container -LiteralPath "${Env:USERPROFILE}\.cloud-init" ) ) {
+          New-Item -ItemType Directory -Path ${Env:USERPROFILE} -Name ".cloud-init"
+          if ( ! $? ) {
+            Write-Error "Cannot create .cloud-init directory."
+            exit 1
+          }
+        }
+        New-Item -Force -ItemType File -Path "${Env:USERPROFILE}\.cloud-init" -Name "${Env:WSL_DISTRO_NAME}.user-data" -Value ${Env:CLOUD_INIT_USER_DATA}
+        if ( ! $? ) {
+          Write-Error "Cannot create cloud-init user-data file for ${Env:WSL_DISTRO_NAME}."
+          exit 1
+        }
+
+        if ( "$${{ inputs.wsl-enable-cloud-init-hack }}" -eq "true" || "$${{ inputs.wsl-enable-systemd }}" -eq "true" ) {
+          Write-Output "Terminating ${Env:WSL_DISTRO_NAME} for earlier changes to take effect..."
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate ${Env:WSL_DISTRO_NAME}"
+          if ( ! $? ) {
+            Write-Error "Cannot terminate ${Env:WSL_DISTRO_NAME} instance."
+            exit 1
+          }
+        }
+
+        Write-Output "Starting ${Env:WSL_DISTRO_NAME} and waiting for cloud-init to finish..."
+        $wslArgs=@(
+          "--distribution ${Env:WSL_DISTRO_NAME}"
+          "--user root"
+          "--cd /"
+          "--exec cloud-init status --wait"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot start ${Env:WSL_DISTRO_NAME} and finish cloud-init process."
+          exit 1
+        }
+
+        Write-Output "Validating cloud-init schema."
+        $wslArgs=@(
+          "--distribution ${Env:WSL_DISTRO_NAME}"
+          "--user root"
+          "--cd /"
+          "--exec cloud-init schema --system"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot validate cloud-init schema of ${Env:WSL_DISTRO_NAME}."
+          exit 1
+        }
