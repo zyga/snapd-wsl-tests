@@ -248,62 +248,41 @@ jobs:
             exit 1
           }
 
-      - name: Cache snaps necessary for testing on ${{ inputs.architecture }}
-        id: cache-snaps
-        uses: actions/cache@v4
+      - name: Download snapd snap
+        uses: ./.github/actions/download-snap
         with:
-          path: snaps/
-          key: snaps-amd64
+          snap-name: snapd
+          distribution: Test-${{ inputs.wsl-distro-name }}
 
-      - name: Download snaps necessary for testing on ${{ inputs.architecture }}
-        if: ${{ steps.cache-snaps.outputs.cache-hit != 'true' }}
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = 'Test-${{ inputs.wsl-distro-name }}'
-          Write-Output "Downloading snaps necessary for testing..."
-          if ( -not ( Test-Path -PathType Container -LiteralPath "snaps" ) ) {
-            New-Item -ItemType Directory -Name "snaps"
-            if ( ! $? ) {
-              Write-Error "Cannot create snaps directory."
-              exit 1
-            }
-          }
+      - name: Download bare snap
+        uses: ./.github/actions/download-snap
+        with:
+          snap-name: bare
+          distribution: Test-${{ inputs.wsl-distro-name }}
 
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps snapd"
-          if ( ! $? ) {
-            Write-Error "Cannot download snapd snap."
-            exit 1
-          }
+      - name: Download core22 snap
+        uses: ./.github/actions/download-snap
+        with:
+          snap-name: core22
+          distribution: Test-${{ inputs.wsl-distro-name }}
 
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps bare"
-          if ( ! $? ) {
-            Write-Error "Cannot download bare snap."
-            exit 1
-          }
+      - name: Download hello snap
+        uses: ./.github/actions/download-snap
+        with:
+          snap-name: hello
+          distribution: Test-${{ inputs.wsl-distro-name }}
 
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps core22"
-          if ( ! $? ) {
-            Write-Error "Cannot download core22 snap."
-            exit 1
-          }
+      - name: Download snapcraft snap
+        uses: ./.github/actions/download-snap
+        with:
+          snap-name: snapcraft
+          distribution: Test-${{ inputs.wsl-distro-name }}
 
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps hello"
-          if ( ! $? ) {
-            Write-Error "Cannot download hello snap."
-            exit 1
-          }
-
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps snapcraft"
-          if ( ! $? ) {
-            Write-Error "Cannot download snapcraft snap."
-            exit 1
-          }
-
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName --user root --cd ~ --exec snap download --target-directory=/srv/workspace/snaps lxd"
-          if ( ! $? ) {
-            Write-Error "Cannot download lxd snap."
-            exit 1
-          }
+      - name: Download lxd snap
+        uses: ./.github/actions/download-snap
+        with:
+          snap-name: lxd
+          distribution: Test-${{ inputs.wsl-distro-name }}
 
       - name: Install snapd snap
         run: |

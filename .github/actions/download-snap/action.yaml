@@ -1,0 +1,66 @@
+name: Download snap package
+author: Zygmunt Krynicki
+description: |
+  Download snap action using an initialized WSL distribution
+  and store the file in a directory on the Windows host.
+inputs:
+  distribution:
+    description: Name of the WSL distribution to use
+    required: true
+  snap-name:
+    description: Name of the snap in the store
+    required: true
+  snaps-dir:
+    description: Directory where snaps should be stored
+    default: snaps
+outputs:
+  snap-revision:
+    description: Revision of the downloaded snap
+    value: ${{ steps.download.snap-revision }}
+branding:
+  icon: download
+  color: orange
+runs:
+  using: composite
+  steps:
+    - name: Cache ${{ inputs.snap-name }}
+      id: cache-snap
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_*.snap
+          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_*.assert
+        key: snaps-${{ inputs.snap-name }}-amd64
+    - name: Download ${{ inputs.snap-name }}
+      shell: pwsh
+      if: ${{ steps.cache-snap.outputs.cache-hit != 'true' }}
+      env:
+        SNAP_NAME: ${{ inputs.snap-name }}
+        SNAPS_DIR: ${{ inputs.snaps-dir }}
+        DISTRO_NAME: ${{ inputs.distribution }}
+      run: |
+        Set-StrictMode -version latest
+        Write-Output "Downloading ${Env:SNAP_NAME} snap..."
+        if ( -not ( Test-Path -PathType Container -LiteralPath ${Env:SNAPS_DIR} ) ) {
+          New-Item -ItemType Directory -Name ${Env:SNAPS_DIR}
+          if ( ! $? ) {
+            Write-Error "Cannot create ${Env:SNAPS_DIR} directory."
+            exit 1
+          }
+        }
+        $wslArgs=@(
+          "--distribution ${Env:DISTRO_NAME}"
+          "--user root"
+          "--cd ~"
+          "snap download --target-directory=`$(wslpath -u '${Env:GITHUB_WORKSPACE}\${Env:SNAPS_DIR}') ${Env:SNAP_NAME}"
+        )
+        Write-Output "Args are $wslArgs"
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "${wslArgs}"
+        if ( ! $? ) {
+          Write-Error "Cannot download ${Env:SNAP_NAME} snap."
+          exit 1
+        }
+
+        $SnapRevision = $(Get-Item "${Env:SNAPS_DIR}/${Env:SNAP_NAME}_*.snap").BaseName -Split '_' | Select-Object -Last 1
+        Add-Content -LiteralPath ${Env:GITHUB_OUTPUT} -Value "snap-revision=${SnapRevision}"
+        Write-Output "Downloaded revision ${SnapRevision} of ${Env:SNAP_NAME} snap."
