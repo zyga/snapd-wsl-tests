@@ -102,53 +102,25 @@ jobs:
           $SnapName = 'snapd'
 
           Write-Output "Starting snapd service."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl start snapd"
-          if ( ! $? ) {
-            Write-Error "Cannot start snapd service."
-            exit 1
-          }
+          wsl --user root --distribution ${DistroName} systemctl start snapd || (Write-Error "Cannot start snapd service." && Exit 1)
 
           Write-Output "Querying status of snapd service and socket."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
-          if ( ! $? ) {
-            Write-Error "Cannot query status of snapd service and socket."
-            exit 1
-          }
+          wsl --distribution ${DistroName} systemctl status snapd.service snapd.socket || (Write-Error "Cannot query status of snapd service and socket." && Exit 1)
 
           Write-Output "Version of snapd in the rootfs."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
-          if ( ! $? ) {
-            Write-Error "Cannot query snapd version."
-            exit 1
-          }
+          wsl --distribution ${DistroName} snap version || (Write-Error "Cannot query snapd version." && Exit 1)
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert"
-          if ( ! $? ) {
-            Write-Error "Cannot ack assertion of ${SnapName}."
-            exit 1
-          }
+          wsl --user root --distribution ${DistroName} snap ack "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert" || (Write-Error "Cannot ack assertion of ${SnapName}." && Exit 1)
 
           Write-Output "Installing snapd as a snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap"
-          if ( ! $? ) {
-            Write-Error "Cannot install snap ${SnapName}."
-            exit 1
-          }
+          wsl --user root --distribution ${DistroName} snap install "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap" || (Write-Error "Cannot install snap ${SnapName}." && Exit 1)
 
           Write-Output "Version of snapd from the snapd snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap version"
-          if ( ! $? ) {
-            Write-Error "Cannot query snapd version."
-            exit 1
-          }
+          wsl --distribution ${DistroName} snap version || (Write-Error "Cannot query snapd version." && Exit 1)
 
           Write-Output "Querying status of snapd service and socket after snapd snap is installed."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName systemctl status snapd.service snapd.socket"
-          if ( ! $? ) {
-            Write-Error "Cannot query status of snapd service and socket."
-            exit 1
-          }
+          wsl --distribution ${DistroName} systemctl status snapd.service snapd.socket || (Write-Error "Cannot query status of snapd service and socket." && Exit 1)
 
       - name: Install core22 base snap
         run: |
@@ -157,18 +129,10 @@ jobs:
           $SnapName = 'core22'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert"
-          if ( ! $? ) {
-            Write-Error "Cannot ack assertion of ${SnapName}."
-            exit 1
-          }
+          wsl --distribution ${DistroName} snap ack "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert" || (Write-Error "Cannot ack assertion of ${SnapName}." && Exit 1)
 
           Write-Output "Installing ${SnapName} snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap"
-          if ( ! $? ) {
-            Write-Error "Cannot install snap ${SnapName}."
-            exit 1
-          }
+          wsl --distribution ${DistroName} snap install "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap" || (Write-Error "Cannot install snap ${SnapName}." && Exit 1)
 
       - name: Install hello snap
         run: |
@@ -177,18 +141,10 @@ jobs:
           $SnapName = 'hello'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert"
-          if ( ! $? ) {
-            Write-Error "Cannot ack assertion of ${SnapName}."
-            exit 1
-          }
+          wsl --distribution ${DistroName} snap ack "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert" || (Write-Error "Cannot ack assertion of ${SnapName}." && Exit 1)
 
           Write-Output "Installing ${SnapName} snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap"
-          if ( ! $? ) {
-            Write-Error "Cannot install snap ${SnapName}."
-            exit 1
-          }
+          wsl --distribution ${DistroName} snap install "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap" || (Write-Error "Cannot install snap ${SnapName}." && Exit 1)
 
       - name: Run hello snap application
         run: |
