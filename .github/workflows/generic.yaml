@@ -50,6 +50,7 @@ jobs:
         uses: ./.github/actions/install-wsl
 
       - name: Import ${{ inputs.wsl-distro-name }} into WSL and run cloud-init
+        id: setup-distro
         uses: ./.github/actions/setup-distro
         with:
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
@@ -122,14 +123,14 @@ jobs:
           }
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/github-workspace/snaps/${SnapName}_*.assert"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
             exit 1
           }
 
           Write-Output "Installing snapd as a snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/github-workspace/snaps/${SnapName}_*.snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap"
           if ( ! $? ) {
             Write-Error "Cannot install snap ${SnapName}."
             exit 1
@@ -156,14 +157,14 @@ jobs:
           $SnapName = 'core22'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/github-workspace/snaps/${SnapName}_*.assert"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
             exit 1
           }
 
           Write-Output "Installing ${SnapName} snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/github-workspace/snaps/${SnapName}_*.snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap"
           if ( ! $? ) {
             Write-Error "Cannot install snap ${SnapName}."
             exit 1
@@ -176,14 +177,14 @@ jobs:
           $SnapName = 'hello'
 
           Write-Output "Acknowledging assertion of ${SnapName}."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack /srv/github-workspace/snaps/${SnapName}_*.assert"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap ack ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert"
           if ( ! $? ) {
             Write-Error "Cannot ack assertion of ${SnapName}."
             exit 1
           }
 
           Write-Output "Installing ${SnapName} snap."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install /srv/github-workspace/snaps/${SnapName}_*.snap"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap install ${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap"
           if ( ! $? ) {
             Write-Error "Cannot install snap ${SnapName}."
             exit 1

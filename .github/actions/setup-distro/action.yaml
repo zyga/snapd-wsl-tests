@@ -49,10 +49,10 @@ inputs:
             - lxd # For using LXD without sudo
             - docker # For using Docker without sudo
           shell: /bin/bash
-
-      runcmd:
-        # This is quoted to avoid forward slashes from windows paths from messing up the value.
-        - ln -fs "$(wslpath -u '${{ github.workspace }}')" /srv/github-workspace
+outputs:
+  wsl-workspace-path:
+    description: Path of the GitHub workspace inside WSL
+    value: ${{ steps.setup-workspace-symlink.outputs.wsl-workspace-path }}
 
 branding:
   icon: cloud
@@ -255,3 +255,26 @@ runs:
           Write-Error "Cannot validate cloud-init schema of ${Env:WSL_DISTRO_NAME}."
           exit 1
         }
+
+    - name: Setup symlink for accessing GitHub workspace from WSL
+      shell: pwsh
+      id: setup-workspace-symlink
+      env:
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+      run: |
+        Set-StrictMode -version latest
+
+        Write-Output "Creating a symlink for accessing GitHub workspace from WSL."
+        $wslArgs=@(
+          "--distribution ${Env:WSL_DISTRO_NAME}"
+          "--user root"
+          "--cd /"
+          "set -xeu && ln -s `"`$(wslpath -u '${{ github.workspace }}')`" /srv/github-workspace"
+        )
+        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList $wslArgs
+        if ( ! $? ) {
+          Write-Error "Cannot create symlink for accessing GitHub workspace from WSL."
+          exit 1
+        }
+
+        Add-Content -LiteralPath ${Env:GITHUB_OUTPUT} -Value "wsl-workspace-path=/srv/github-workspace"
