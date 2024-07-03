@@ -196,8 +196,7 @@ jobs:
           $SnapName = 'hello'
 
           Write-Output "Running ${SnapName} application."
-          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--distribution $DistroName snap run ${SnapName}"
-          if ( ! $? ) {
+          if ((wsl --distribution $DistroName snap run ${SnapName}) -notmatch 'Hello, world!') {
             Write-Error "Cannot run snap ${SnapName} application."
             exit 1
           }
