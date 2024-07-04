@@ -1,0 +1,43 @@
+name: Install snap package
+author: Zygmunt Krynicki
+description: |
+  Install snap action using an initialized WSL distribution, downloading the
+  snap from the Snap Store.
+inputs:
+  wsl-distro-name:
+    description: Name of the WSL distribution to use
+    required: true
+  snap-name:
+    description: Name of the snap to install
+    required: true
+  snap-channel:
+    description: Name of the channel to use
+    default: latest/stable
+  snaps-dir:
+    description: Directory where snaps should be stored
+    default: snaps
+outputs:
+  snap-revision:
+    description: Revision of the installed snap
+    value: ${{ steps.download.outputs.snap-revision }}
+branding:
+  icon: download
+  color: orange
+runs:
+  using: composite
+  steps:
+    - name: Download snap ${{ inputs.snap-name }} from the Snap Store
+      id: download
+      uses: ./.github/actions/download-snap
+      with:
+        wsl-distro-name: ${{ inputs.wsl-distro-name }}
+        snap-name: ${{ inputs.snap-name }}
+        snap-channel: ${{ inputs.snap-channel }}
+        snaps-dir: ${{ inputs.snaps-dir }}
+    - name: Install downloaded snap ${{ inputs.snap-name }}
+      uses: ./.github/actions/install-offline-snap
+      with:
+        wsl-distro-name: ${{ inputs.wsl-distro-name }}
+        snap-name: ${{ inputs.snap-name }}
+        snap-revision: ${{ steps.download.outputs.snap-revision }}
+        offline-snaps-dir: ${{ steps.download.outputs.offline-snaps-dir }}

@@ -59,50 +59,23 @@ jobs:
           wsl-enable-systemd: ${{ inputs.wsl-enable-systemd }}
           wsl-enable-cloud-init-hack: ${{ inputs.wsl-enable-cloud-init-hack }}
 
-      - name: Download snapd snap
-        id: download-snapd
-        uses: ./.github/actions/download-snap
-        with:
-          snap-name: snapd
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
       - name: Install snapd snap
-        uses: ./.github/actions/install-offline-snap
+        uses: ./.github/actions/install-snap
         with:
-          snap-name: ${{ steps.download-snapd.outputs.snap-name }}
-          snap-revision: ${{ steps.download-snapd.outputs.snap-revision }}
-          offline-snaps-dir: ${{ steps.download-snapd.outputs.offline-snaps-dir }}
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
-      - name: Download core22 snap
-        id: download-core22
-        uses: ./.github/actions/download-snap
-        with:
-          snap-name: core22
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: snapd
 
       - name: Install core22 snap
-        uses: ./.github/actions/install-offline-snap
+        uses: ./.github/actions/install-snap
         with:
-          snap-name: ${{ steps.download-core22.outputs.snap-name }}
-          snap-revision: ${{ steps.download-core22.outputs.snap-revision }}
-          offline-snaps-dir: ${{ steps.download-core22.outputs.offline-snaps-dir }}
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
-      - name: Download hello snap
-        id: download-hello
-        uses: ./.github/actions/download-snap
-        with:
-          snap-name: hello
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: core22
 
       - name: Install hello snap
-        uses: ./.github/actions/install-offline-snap
+        uses: ./.github/actions/install-snap
         with:
-          snap-name: ${{ steps.download-hello.outputs.snap-name }}
-          snap-revision: ${{ steps.download-hello.outputs.snap-revision }}
-          offline-snaps-dir: ${{ steps.download-hello.outputs.offline-snaps-dir }}
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: hello
 
       - name: Run hello snap application
         run: |
