@@ -65,7 +65,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ inputs.wsl-rootfses-dir }}/${{ inputs.wsl-rootfs-file }}
-        key: ${{ inputs.wsl-rootfs-file }}
+        key: rootfs/${{ inputs.wsl-rootfs-file }}
 
     - name: Download ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
       shell: pwsh

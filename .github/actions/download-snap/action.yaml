@@ -52,7 +52,7 @@ runs:
         path: |
           ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ steps.query-store.outputs.snap-revision }}.snap
           ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ steps.query-store.outputs.snap-revision }}.assert
-        key: snaps-${{ inputs.snap-name }}-${{ steps.query-store.outputs.snap-revision }}-amd64
+        key: snaps/${{ inputs.snap-name }}-${{ steps.query-store.outputs.snap-revision }}
     - name: Download ${{ inputs.snap-name }}
       if: ${{ steps.cache-snap.outputs.cache-hit != 'true' }}
       env:
