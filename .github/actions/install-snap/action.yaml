@@ -10,8 +10,10 @@ inputs:
   snap-name:
     description: Name of the snap to install
     required: true
+  snap-revision:
+    description: Revision to download (mutually exclusive with channel)
   snap-channel:
-    description: Name of the channel to use
+    description: Name of the channel to use (mutually exclusive with revision)
     default: latest/stable
   snaps-dir:
     description: Directory where snaps should be stored
@@ -32,6 +34,7 @@ runs:
       with:
         wsl-distro-name: ${{ inputs.wsl-distro-name }}
         snap-name: ${{ inputs.snap-name }}
+        snap-revision: ${{ inputs.snap-revision }}
         snap-channel: ${{ inputs.snap-channel }}
         snaps-dir: ${{ inputs.snaps-dir }}
     - name: Install downloaded snap ${{ inputs.snap-name }}

@@ -35,6 +35,14 @@ on:
         required: false
         type: string
         default: wsl.2.2.4.0.x64.msi
+      snapd-snap-revision:
+        required: false
+        type: number
+        default: 0
+      snapd-snap-channel:
+        required: false
+        type: string
+        default: latest/stable
 
 env:
   WSL_UTF8: "1"
@@ -59,11 +67,21 @@ jobs:
           wsl-enable-systemd: ${{ inputs.wsl-enable-systemd }}
           wsl-enable-cloud-init-hack: ${{ inputs.wsl-enable-cloud-init-hack }}
 
-      - name: Install snapd snap
+      - name: Install snapd snap from a channel
         uses: ./.github/actions/install-snap
+        if: ${{ inputs.snapd-snap-revision == 0 }}
         with:
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
           snap-name: snapd
+          snap-channel: ${{ inputs.snapd-snap-channel }}
+
+      - name: Install specific snapd snap revision
+        uses: ./.github/actions/install-snap
+        if: ${{ inputs.snapd-snap-revision != 0 }}
+        with:
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: snapd
+          snap-revision: ${{ inputs.snapd-snap-revision }}
 
       - name: Install core22 snap
         uses: ./.github/actions/install-snap

@@ -8,6 +8,20 @@ on:
   schedule:
     - cron: '0 23 * * *'
   workflow_dispatch:
+    inputs:
+      snapd-snap-revision:
+        description: "Specific revision of snapd to use (0 uses channel)"
+        type: number
+        default: 0
+      snapd-snap-channel:
+        description: "Specific channel of snapd to use"
+        type: choice
+        options:
+          - latest/stable
+          - latest/candidate
+          - latest/beta
+          - latest/edge
+        default: latest/stable
 
 jobs:
   ubuntu:
@@ -33,3 +47,5 @@ jobs:
       wsl-distro-name: Test-Ubuntu-${{ matrix.version-id }}
       wsl-enable-systemd: ${{ matrix.wsl-enable-systemd }}
       wsl-enable-cloud-init-hack: ${{ matrix.wsl-enable-cloud-init-hack }}
+      snapd-snap-revision: ${{ github.event.inputs.snapd-snap-revision != 0 && fromJSON(github.event.inputs.snapd-snap-revision) || 0 }}
+      snapd-snap-channel: ${{ github.event.inputs.snapd-snap-channel != '' && github.event.inputs.snapd-snap-channel || 'latest/stable' }}
