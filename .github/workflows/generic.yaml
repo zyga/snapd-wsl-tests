@@ -80,6 +80,7 @@ jobs:
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download hello snap
+        id: download-hello
         uses: ./.github/actions/download-snap
         with:
           snap-name: hello
@@ -114,16 +115,12 @@ jobs:
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Install hello snap
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = '${{ inputs.wsl-distro-name }}'
-          $SnapName = 'hello'
-
-          Write-Output "Acknowledging assertion of ${SnapName}."
-          wsl --distribution ${DistroName} snap ack "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert" || (Write-Error "Cannot ack assertion of ${SnapName}." && Exit 1)
-
-          Write-Output "Installing ${SnapName} snap."
-          wsl --distribution ${DistroName} snap install "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap" || (Write-Error "Cannot install snap ${SnapName}." && Exit 1)
+        uses: ./.github/actions/install-offline-snap
+        with:
+          snap-name: ${{ steps.download-hello.outputs.snap-name }}
+          snap-revision: ${{ steps.download-hello.outputs.snap-revision }}
+          offline-snaps-dir: ${{ steps.download-hello.outputs.offline-snaps-dir }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Run hello snap application
         run: |
