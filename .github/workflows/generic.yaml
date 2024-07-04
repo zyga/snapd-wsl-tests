@@ -60,91 +60,49 @@ jobs:
           wsl-enable-cloud-init-hack: ${{ inputs.wsl-enable-cloud-init-hack }}
 
       - name: Download snapd snap
+        id: download-snapd
         uses: ./.github/actions/download-snap
         with:
           snap-name: snapd
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
-      - name: Download bare snap
-        uses: ./.github/actions/download-snap
+      - name: Install snapd snap
+        uses: ./.github/actions/install-offline-snap
         with:
-          snap-name: bare
+          snap-name: ${{ steps.download-snapd.outputs.snap-name }}
+          snap-revision: ${{ steps.download-snapd.outputs.snap-revision }}
+          offline-snaps-dir: ${{ steps.download-snapd.outputs.offline-snaps-dir }}
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download core22 snap
+        id: download-core22
         uses: ./.github/actions/download-snap
         with:
           snap-name: core22
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
+      - name: Install core22 snap
+        uses: ./.github/actions/install-offline-snap
+        with:
+          snap-name: ${{ steps.download-core22.outputs.snap-name }}
+          snap-revision: ${{ steps.download-core22.outputs.snap-revision }}
+          offline-snaps-dir: ${{ steps.download-core22.outputs.offline-snaps-dir }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+
       - name: Download hello snap
+        id: download-hello
         uses: ./.github/actions/download-snap
         with:
           snap-name: hello
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
-      - name: Download snapcraft snap
-        uses: ./.github/actions/download-snap
-        with:
-          snap-name: snapcraft
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
-      - name: Download lxd snap
-        uses: ./.github/actions/download-snap
-        with:
-          snap-name: lxd
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
-      - name: Install snapd snap
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = '${{ inputs.wsl-distro-name }}'
-          $SnapName = 'snapd'
-
-          Write-Output "Starting snapd service."
-          wsl --user root --distribution ${DistroName} systemctl start snapd || (Write-Error "Cannot start snapd service." && Exit 1)
-
-          Write-Output "Querying status of snapd service and socket."
-          wsl --distribution ${DistroName} systemctl status snapd.service snapd.socket || (Write-Error "Cannot query status of snapd service and socket." && Exit 1)
-
-          Write-Output "Version of snapd in the rootfs."
-          wsl --distribution ${DistroName} snap version || (Write-Error "Cannot query snapd version." && Exit 1)
-
-          Write-Output "Acknowledging assertion of ${SnapName}."
-          wsl --user root --distribution ${DistroName} snap ack "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert" || (Write-Error "Cannot ack assertion of ${SnapName}." && Exit 1)
-
-          Write-Output "Installing snapd as a snap."
-          wsl --user root --distribution ${DistroName} snap install "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap" || (Write-Error "Cannot install snap ${SnapName}." && Exit 1)
-
-          Write-Output "Version of snapd from the snapd snap."
-          wsl --distribution ${DistroName} snap version || (Write-Error "Cannot query snapd version." && Exit 1)
-
-          Write-Output "Querying status of snapd service and socket after snapd snap is installed."
-          wsl --distribution ${DistroName} systemctl status snapd.service snapd.socket || (Write-Error "Cannot query status of snapd service and socket." && Exit 1)
-
-      - name: Install core22 base snap
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = '${{ inputs.wsl-distro-name }}'
-          $SnapName = 'core22'
-
-          Write-Output "Acknowledging assertion of ${SnapName}."
-          wsl --distribution ${DistroName} snap ack "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert" || (Write-Error "Cannot ack assertion of ${SnapName}." && Exit 1)
-
-          Write-Output "Installing ${SnapName} snap."
-          wsl --distribution ${DistroName} snap install "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap" || (Write-Error "Cannot install snap ${SnapName}." && Exit 1)
-
       - name: Install hello snap
-        run: |
-          Set-StrictMode -version latest
-          $DistroName = '${{ inputs.wsl-distro-name }}'
-          $SnapName = 'hello'
-
-          Write-Output "Acknowledging assertion of ${SnapName}."
-          wsl --distribution ${DistroName} snap ack "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.assert" || (Write-Error "Cannot ack assertion of ${SnapName}." && Exit 1)
-
-          Write-Output "Installing ${SnapName} snap."
-          wsl --distribution ${DistroName} snap install "${{ steps.setup-distro.outputs.wsl-workspace-path }}/snaps/${SnapName}_*.snap" || (Write-Error "Cannot install snap ${SnapName}." && Exit 1)
+        uses: ./.github/actions/install-offline-snap
+        with:
+          snap-name: ${{ steps.download-hello.outputs.snap-name }}
+          snap-revision: ${{ steps.download-hello.outputs.snap-revision }}
+          offline-snaps-dir: ${{ steps.download-hello.outputs.offline-snaps-dir }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Run hello snap application
         run: |

@@ -14,9 +14,15 @@ inputs:
     description: Directory where snaps should be stored
     default: snaps
 outputs:
+  snap-name:
+    description: Name of the downloaded snap
+    value: ${{ inputs.snap-name }}
   snap-revision:
     description: Revision of the downloaded snap
-    value: ${{ steps.download.snap-revision }}
+    value: ${{ steps.inspect-snap.outputs.snap-revision }}
+  offline-snaps-dir:
+    description: Directory where downloaded snaps and assertions are stored
+    value: ${{ inputs.snaps-dir }}
 branding:
   icon: download
   color: orange
@@ -61,6 +67,14 @@ runs:
           exit 1
         }
 
+    - name: Inspect revision of ${{ inputs.snap-name }}
+      id: inspect-snap
+      env:
+        SNAP_NAME: ${{ inputs.snap-name }}
+        SNAPS_DIR: ${{ inputs.snaps-dir }}
+      shell: pwsh
+      run: |
+        Set-StrictMode -version latest
         $SnapRevision = $(Get-Item "${Env:SNAPS_DIR}/${Env:SNAP_NAME}_*.snap").BaseName -Split '_' | Select-Object -Last 1
         Add-Content -LiteralPath ${Env:GITHUB_OUTPUT} -Value "snap-revision=${SnapRevision}"
         Write-Output "Downloaded revision ${SnapRevision} of ${Env:SNAP_NAME} snap."

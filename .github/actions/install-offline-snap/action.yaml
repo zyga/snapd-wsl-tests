@@ -1,0 +1,38 @@
+name: Install offline snap package
+author: Zygmunt Krynicki
+description: |
+  Install snap action using an initialized WSL distribution and downloaded snap
+  file.
+inputs:
+  wsl-distro-name:
+    description: Name of the WSL distribution to use
+    required: true
+  snap-name:
+    description: Name of the snap to install
+    required: true
+  snap-revision:
+    description: Revision of the snap to install
+    required: true
+  offline-snaps-dir:
+    description: Directory where downloaded snaps and assertions are stored
+    default: snaps
+branding:
+  icon: download
+  color: orange
+runs:
+  using: composite
+  steps:
+    - name: Install ${{ inputs.snap-name}} revision ${{ inputs.snap-revision }} base snap
+      shell: pwsh
+      env:
+        SNAP_NAME: ${{ inputs.snap-name }}
+        SNAP_REVISION: ${{ inputs.snap-revision }}
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        OFFLINE_SNAPS_DIR: ${{ inputs.offline-snaps-dir }}
+      run: |
+        Set-StrictMode -version latest
+        Write-Output "Acknowledging assertion of snap ${Env:SNAP_NAME} revision ${Env:SNAP_REVISION}."
+        wsl --distribution ${Env:WSL_DISTRO_NAME} snap ack "${Env:OFFLINE_SNAPS_DIR}/${Env:SNAP_NAME}_${Env:SNAP_REVISION}.assert" || (Write-Error "Cannot ack assertion of snap ${Env:SNAP_NAME}." && Exit 1)
+
+        Write-Output "Installing snap ${Env:SNAP_NAME} revision ${Env:SNAP_REVISION}."
+        wsl --distribution ${Env:WSL_DISTRO_NAME} snap install "${Env:OFFLINE_SNAPS_DIR}/${Env:SNAP_NAME}_${Env:SNAP_REVISION}.snap" || (Write-Error "Cannot install snap ${Env:SNAP_NAME}." && Exit 1)
