@@ -10,8 +10,10 @@ inputs:
   snap-name:
     description: Name of the snap in the store
     required: true
+  snap-revision:
+    description: Revision to download (mutually exclusive with channel)
   snap-channel:
-    description: Name of the channel to use
+    description: Name of the channel to use (mutually exclusive with revision)
     default: latest/stable
   snaps-dir:
     description: Directory where snaps should be stored
@@ -22,7 +24,7 @@ outputs:
     value: ${{ inputs.snap-name }}
   snap-revision:
     description: Revision of the downloaded snap
-    value: ${{ steps.query-store.outputs.snap-revision }}
+    value: ${{ inputs.snap-revision && inputs.snap-revision || steps.query-store.outputs.snap-revision }}
   offline-snaps-dir:
     description: Directory where downloaded snaps and assertions are stored
     value: ${{ inputs.snaps-dir }}
@@ -32,8 +34,19 @@ branding:
 runs:
   using: composite
   steps:
+    - name: Use specific revision
+      if: ${{ inputs.snap-revision != '' }}
+      shell: pwsh
+      env:
+        SNAP_NAME: ${{ inputs.snap-name }}
+        SNAP_REVISION: ${{ inputs.snap-revision }}
+      run: |
+        Set-StrictMode -version latest
+        Add-Content -LiteralPath ${Env:GITHUB_OUTPUT} -Value "snap-revision=${Env:SNAP_REVISION}"
+        Write-Output "Snap ${Env:SNAP_NAME} using fixed revision ${Env:SNAP_REVISION}."
     - name: Query the Snap Store
       id: query-store
+      if: ${{ inputs.snap-revision == '' }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         SNAP_CHANNEL: ${{ inputs.snap-channel }}
@@ -50,14 +63,14 @@ runs:
       uses: actions/cache@v4
       with:
         path: |
-          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ steps.query-store.outputs.snap-revision }}.snap
-          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ steps.query-store.outputs.snap-revision }}.assert
-        key: snaps/${{ inputs.snap-name }}-${{ steps.query-store.outputs.snap-revision }}
+          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ inputs.snap-revision && inputs.snap-revision || steps.query-store.outputs.snap-revision }}.snap
+          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ inputs.snap-revision && inputs.snap-revision || steps.query-store.outputs.snap-revision }}.assert
+        key: snaps/${{ inputs.snap-name }}-${{ inputs.snap-revision && inputs.snap-revision || steps.query-store.outputs.snap-revision }}
     - name: Download ${{ inputs.snap-name }}
       if: ${{ steps.cache-snap.outputs.cache-hit != 'true' }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
-        SNAP_REVISION: ${{ steps.query-store.outputs.snap-revision }}
+        SNAP_REVISION: ${{ inputs.snap-revision && inputs.snap-revision || steps.query-store.outputs.snap-revision }}
         SNAPS_DIR: ${{ inputs.snaps-dir }}
         WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
       shell: pwsh
