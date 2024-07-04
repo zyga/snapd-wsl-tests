@@ -22,13 +22,13 @@ branding:
 runs:
   using: composite
   steps:
-    - name: Install ${{ inputs.snap-name}} revision ${{ inputs.snap-revision }} base snap
-      shell: pwsh
+    - name: Install ${{ inputs.snap-name}} revision ${{ inputs.snap-revision }} snap
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         SNAP_REVISION: ${{ inputs.snap-revision }}
         WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
         OFFLINE_SNAPS_DIR: ${{ inputs.offline-snaps-dir }}
+      shell: pwsh
       run: |
         Set-StrictMode -version latest
         Write-Output "Acknowledging assertion of snap ${Env:SNAP_NAME} revision ${Env:SNAP_REVISION}."
