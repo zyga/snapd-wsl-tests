@@ -10,6 +10,9 @@ inputs:
   snap-name:
     description: Name of the snap in the store
     required: true
+  snap-channel:
+    description: Name of the channel to use
+    default: latest/stable
   snaps-dir:
     description: Directory where snaps should be stored
     default: snaps
@@ -19,7 +22,7 @@ outputs:
     value: ${{ inputs.snap-name }}
   snap-revision:
     description: Revision of the downloaded snap
-    value: ${{ steps.inspect-snap.outputs.snap-revision }}
+    value: ${{ steps.query-store.outputs.snap-revision }}
   offline-snaps-dir:
     description: Directory where downloaded snaps and assertions are stored
     value: ${{ inputs.snaps-dir }}
@@ -29,21 +32,35 @@ branding:
 runs:
   using: composite
   steps:
+    - name: Query the Snap Store
+      id: query-store
+      env:
+        SNAP_NAME: ${{ inputs.snap-name }}
+        SNAP_CHANNEL: ${{ inputs.snap-channel }}
+        WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+      shell: pwsh
+      run: |
+        Set-StrictMode -version latest
+        $Response = $(wsl --distribution ${Env:WSL_DISTRO_NAME} --user root curl -sS --unix-socket /run/snapd.socket http://localhost/v2/find?name=${Env:SNAP_NAME}) | ConvertFrom-Json
+        $SnapRevision = $Response.result[0].channels."${Env:SNAP_CHANNEL}".revision
+        Add-Content -LiteralPath ${Env:GITHUB_OUTPUT} -Value "snap-revision=${SnapRevision}"
+        Write-Output "Current revision of snap ${Env:SNAP_NAME} in channel ${Env:SNAP_CHANNEL} is ${SnapRevision}."
     - name: Cache ${{ inputs.snap-name }}
       id: cache-snap
       uses: actions/cache@v4
       with:
         path: |
-          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_*.snap
-          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_*.assert
-        key: snaps-${{ inputs.snap-name }}-amd64
+          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ steps.query-store.outputs.snap-revision }}.snap
+          ${{ inputs.snaps-dir }}/${{ inputs.snap-name }}_${{ steps.query-store.outputs.snap-revision }}.assert
+        key: snaps-${{ inputs.snap-name }}-${{ steps.query-store.outputs.snap-revision }}-amd64
     - name: Download ${{ inputs.snap-name }}
-      shell: pwsh
       if: ${{ steps.cache-snap.outputs.cache-hit != 'true' }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
+        SNAP_REVISION: ${{ steps.query-store.outputs.snap-revision }}
         SNAPS_DIR: ${{ inputs.snaps-dir }}
         WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+      shell: pwsh
       run: |
         Set-StrictMode -version latest
         Write-Output "Downloading ${Env:SNAP_NAME} snap..."
@@ -54,27 +71,5 @@ runs:
             exit 1
           }
         }
-        $wslArgs=@(
-          "--distribution ${Env:WSL_DISTRO_NAME}"
-          "--user root"
-          "--cd ~"
-          "snap download --target-directory=`$(wslpath -u '${Env:GITHUB_WORKSPACE}\${Env:SNAPS_DIR}') ${Env:SNAP_NAME}"
-        )
-        Write-Output "Args are $wslArgs"
-        Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "${wslArgs}"
-        if ( ! $? ) {
-          Write-Error "Cannot download ${Env:SNAP_NAME} snap."
-          exit 1
-        }
-
-    - name: Inspect revision of ${{ inputs.snap-name }}
-      id: inspect-snap
-      env:
-        SNAP_NAME: ${{ inputs.snap-name }}
-        SNAPS_DIR: ${{ inputs.snaps-dir }}
-      shell: pwsh
-      run: |
-        Set-StrictMode -version latest
-        $SnapRevision = $(Get-Item "${Env:SNAPS_DIR}/${Env:SNAP_NAME}_*.snap").BaseName -Split '_' | Select-Object -Last 1
-        Add-Content -LiteralPath ${Env:GITHUB_OUTPUT} -Value "snap-revision=${SnapRevision}"
-        Write-Output "Downloaded revision ${SnapRevision} of ${Env:SNAP_NAME} snap."
+        $wslSnapsDir = $(wsl --distribution ${Env:WSL_DISTRO_NAME} wslpath -u `'${Env:GITHUB_WORKSPACE}\${Env:SNAPS_DIR}`')
+        wsl --distribution ${Env:WSL_DISTRO_NAME} --cd ${wslSnapsDir} snap download --revision=${Env:SNAP_REVISION} ${Env:SNAP_NAME} || (Write-Error "Cannot download snap ${Env:SNAP_NAME} revision ${Env:SNAP_REVISION}." && Exit 1)
