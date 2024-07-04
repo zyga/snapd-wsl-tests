@@ -66,6 +66,14 @@ jobs:
           snap-name: snapd
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
+      - name: Install snapd snap
+        uses: ./.github/actions/install-offline-snap
+        with:
+          snap-name: ${{ steps.download-snapd.outputs.snap-name }}
+          snap-revision: ${{ steps.download-snapd.outputs.snap-revision }}
+          offline-snaps-dir: ${{ steps.download-snapd.outputs.offline-snaps-dir }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+
       - name: Download bare snap
         uses: ./.github/actions/download-snap
         with:
@@ -79,11 +87,27 @@ jobs:
           snap-name: core22
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
+      - name: Install core22 snap
+        uses: ./.github/actions/install-offline-snap
+        with:
+          snap-name: ${{ steps.download-core22.outputs.snap-name }}
+          snap-revision: ${{ steps.download-core22.outputs.snap-revision }}
+          offline-snaps-dir: ${{ steps.download-core22.outputs.offline-snaps-dir }}
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+
       - name: Download hello snap
         id: download-hello
         uses: ./.github/actions/download-snap
         with:
           snap-name: hello
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+
+      - name: Install hello snap
+        uses: ./.github/actions/install-offline-snap
+        with:
+          snap-name: ${{ steps.download-hello.outputs.snap-name }}
+          snap-revision: ${{ steps.download-hello.outputs.snap-revision }}
+          offline-snaps-dir: ${{ steps.download-hello.outputs.offline-snaps-dir }}
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Download snapcraft snap
@@ -96,30 +120,6 @@ jobs:
         uses: ./.github/actions/download-snap
         with:
           snap-name: lxd
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
-      - name: Install snapd snap
-        uses: ./.github/actions/install-offline-snap
-        with:
-          snap-name: ${{ steps.download-snapd.outputs.snap-name }}
-          snap-revision: ${{ steps.download-snapd.outputs.snap-revision }}
-          offline-snaps-dir: ${{ steps.download-snapd.outputs.offline-snaps-dir }}
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
-      - name: Install core22 snap
-        uses: ./.github/actions/install-offline-snap
-        with:
-          snap-name: ${{ steps.download-core22.outputs.snap-name }}
-          snap-revision: ${{ steps.download-core22.outputs.snap-revision }}
-          offline-snaps-dir: ${{ steps.download-core22.outputs.offline-snaps-dir }}
-          wsl-distro-name: ${{ inputs.wsl-distro-name }}
-
-      - name: Install hello snap
-        uses: ./.github/actions/install-offline-snap
-        with:
-          snap-name: ${{ steps.download-hello.outputs.snap-name }}
-          snap-revision: ${{ steps.download-hello.outputs.snap-revision }}
-          offline-snaps-dir: ${{ steps.download-hello.outputs.offline-snaps-dir }}
           wsl-distro-name: ${{ inputs.wsl-distro-name }}
 
       - name: Run hello snap application
