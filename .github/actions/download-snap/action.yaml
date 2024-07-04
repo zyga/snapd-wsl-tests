@@ -14,6 +14,9 @@ inputs:
     description: Directory where snaps should be stored
     default: snaps
 outputs:
+  snap-name:
+    description: Name of the downloaded snap
+    value: ${{ inputs.snap-name }}
   snap-revision:
     description: Revision of the downloaded snap
     value: ${{ steps.inspect-snap.outputs.snap-revision }}
