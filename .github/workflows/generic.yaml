@@ -114,6 +114,71 @@ jobs:
             exit 1
           }
 
+      - name: Inspect snap changes
+        env:
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap changes
+
+      - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
+        if: always()
+        run: |
+          Set-StrictMode -version latest
+          Write-Output "Terminating ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance..."
+          $DistroName = '${{ inputs.wsl-distro-name }}'
+
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
+          Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--unregister $DistroName"
+
+  docker:
+    name: "Smoke test with \"docker\" snap"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install WSL
+        uses: ./.github/actions/install-wsl
+
+      - name: Import ${{ inputs.wsl-distro-name }} into WSL and run cloud-init
+        id: setup-distro
+        uses: ./.github/actions/setup-distro
+        with:
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          wsl-rootfs-url: ${{ inputs.wsl-rootfs-url }}
+          wsl-rootfs-file: ${{ inputs.wsl-rootfs-file }}
+          wsl-enable-systemd: ${{ inputs.wsl-enable-systemd }}
+          wsl-enable-cloud-init-hack: ${{ inputs.wsl-enable-cloud-init-hack }}
+
+      - name: Install snapd snap from a channel
+        uses: ./.github/actions/install-snap
+        if: ${{ inputs.snapd-snap-revision == 0 }}
+        with:
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: snapd
+          snap-channel: ${{ inputs.snapd-snap-channel }}
+
+      - name: Install specific snapd snap revision
+        uses: ./.github/actions/install-snap
+        if: ${{ inputs.snapd-snap-revision != 0 }}
+        with:
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: snapd
+          snap-revision: ${{ inputs.snapd-snap-revision }}
+
+      - name: Hold all snap refreshes
+        env:
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap refresh --hold
+
+      - name: Install core22 snap
+        uses: ./.github/actions/install-snap
+        with:
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: core22
+
       - name: Install docker snap
         uses: ./.github/actions/install-snap
         with:
