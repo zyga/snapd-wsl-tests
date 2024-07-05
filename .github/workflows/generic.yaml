@@ -83,6 +83,13 @@ jobs:
           snap-name: snapd
           snap-revision: ${{ inputs.snapd-snap-revision }}
 
+      - name: Hold all snap refreshes
+        env:
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap refresh --hold
+
       - name: Install core22 snap
         uses: ./.github/actions/install-snap
         with:
@@ -106,6 +113,76 @@ jobs:
             Write-Error "Cannot run snap ${SnapName} application."
             exit 1
           }
+
+      - name: Install docker snap
+        uses: ./.github/actions/install-snap
+        with:
+          wsl-distro-name: ${{ inputs.wsl-distro-name }}
+          snap-name: docker
+
+      - name: Cache ubuntu:24.04 container image
+        id: cache-container-image
+        uses: actions/cache@v4
+        with:
+          path: ubuntu-24.04.tar.gz
+          key: oci/ubuntu:24.04
+
+      - name: Inspect status of docker service
+        env:
+          SNAP_NAME: docker
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap run ${Env:SNAP_NAME} --help
+          wsl --distribution ${Env:WSL_DISTRO_NAME} systemctl status snap.docker.dockerd.service
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap services
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap logs ${Env:SNAP_NAME}
+
+      - name: Pull ubuntu:24.04 container image
+        if: ${{ steps.cache-container-image.outputs.cache-hit != 'true' }}
+        env:
+          SNAP_NAME: docker
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+          WSL_DISTRO_USER: user ## TODO: use input from distro setup job
+          IMAGE_TAG: "ubuntu:24.04"
+          IMAGE_FILE: "ubuntu-24.04.tar.gz"
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap run ${Env:SNAP_NAME} pull ${Env:IMAGE_TAG}
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap run ${Env:SNAP_NAME} save --output ${Env:IMAGE_FILE} ${Env:IMAGE_TAG}
+
+      - name: Import ubuntu:24.04 container image
+        if: ${{ steps.cache-container-image.outputs.cache-hit == 'true' }}
+        env:
+          SNAP_NAME: docker
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+          WSL_DISTRO_USER: user ## TODO: use input from distro setup job
+          IMAGE_TAG: "ubuntu:24.04"
+          IMAGE_FILE: "ubuntu-24.04.tar.gz"
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap run ${Env:SNAP_NAME} load --input ${Env:IMAGE_FILE}
+
+      - name: Run hello docker container
+        env:
+          SNAP_NAME: docker
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+          WSL_DISTRO_USER: user ## TODO: use input from distro setup job
+        run: |
+          Set-StrictMode -version latest
+          Write-Output "Running cat /etc/os-release from ubuntu:24.04."
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap run docker run --rm ubuntu:24.04 cat /etc/os-release
+          if ((wsl --distribution ${Env:WSL_DISTRO_NAME} --user ${Env:WSL_DISTRO_USER} --cd '~' --exec snap run ${Env:SNAP_NAME} run --rm ubuntu:24.04 cat /etc/os-release | Select-String -NoEmphasis -CaseSensitive -Raw -Pattern '^VERSION_ID=') -ne 'VERSION_ID="24.04"') {
+            Write-Error "Expected to see VERSION_ID=... for Ubuntu 24.04."
+            Exit 1
+          }
+
+      - name: Inspect snap changes
+        env:
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap changes
 
       - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
         if: always()
