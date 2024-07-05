@@ -170,6 +170,13 @@ jobs:
             Exit 1
           }
 
+      - name: Inspect snap changes
+        env:
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap changes
+
       - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
         if: always()
         run: |
