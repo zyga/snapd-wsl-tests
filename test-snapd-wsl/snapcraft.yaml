@@ -1,0 +1,20 @@
+name: test-snapd-wsl
+summary: Test snap built inside WSL environment
+description: |
+  This snap builds a basic C program from source.
+license: Apache-2.0
+version: "1.0.0"
+base: core22
+
+confinement: strict
+
+parts:
+  hello:
+    plugin: make
+    make-parameters:
+      - prefix=/usr
+    source: .
+
+apps:
+  test-snapd-wsl:
+    command: usr/bin/hello
