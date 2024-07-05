@@ -25,7 +25,10 @@ is the extreme opposite of that, as it uses many complex elements of the stack.
 Lastly `lxd` and `snapcraft` used together to build an application snap
 represents a workload that developers may try to achieve using WSL.
 
-# Git Hub Runner
+# GitHub Runner
+
+This section describes the technical needs to run this workflow either in the
+public GitHub runners or with a self-hosted runner.
 
 ## GitHub Runner (standard)
 
