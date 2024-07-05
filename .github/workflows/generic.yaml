@@ -1,5 +1,5 @@
 name: Smoke
-run-name: Smoke test with hello on ${{ inputs.distro-name }}
+run-name: Smoke test on ${{ inputs.distro-name }}
 
 on:
   workflow_call:
