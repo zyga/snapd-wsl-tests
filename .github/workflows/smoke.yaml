@@ -1,4 +1,4 @@
-name: latest/stable
+name: Smoke
 
 on:
   push:
@@ -25,7 +25,7 @@ on:
 
 jobs:
   ubuntu:
-    name: "Ubuntu ${{ matrix.version-id }}${{ matrix.lts == true && ' LTS' || '' }}"
+    name: "Ubuntu ${{ matrix.version-id }}"
     strategy:
       matrix:
         lts: [false]
