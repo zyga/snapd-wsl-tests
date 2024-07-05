@@ -1,6 +1,29 @@
 # Snapd in WSL
 
-Smoke testing snapd in WSL-2
+Smoke testing snapd in WSL-2!
+
+This repository contains GitHub workflow designed to run on Windows
+to install and prepare a WSL-2 environment and go through several
+scenarios using _snap_ packages.
+
+At present there are three test scenarios available:
+
+- A `hello` snap is installed and invoked.
+- A `docker` snap is installed and used to spawn a command in an OCI container.
+- A `snapcraft` snap is installed alongside `lxd` snap, then both are used to
+  build a snap from source.
+
+In all cases the snaps represent various grades of complexity and interaction
+with the Windows interoperability layer. In all cases `snapd` snap is installed
+first. Mechanism exist to allow selecting either a specific _revision_ or a
+specific _channel_ where snapd is installed from. This is designed such so that
+the workflow may be used to test upcoming releases of snapd.
+
+The `hello` snap is the most basic test - it should work in all the cases as it
+has minimal interaction surface with the rest of the system. The `docker` snap
+is the extreme opposite of that, as it uses many complex elements of the stack.
+Lastly `lxd` and `snapcraft` used together to build an application snap
+represents a workload that developers may try to achieve using WSL.
 
 # Git Hub Runner
 
