@@ -83,6 +83,13 @@ jobs:
           snap-name: snapd
           snap-revision: ${{ inputs.snapd-snap-revision }}
 
+      - name: Hold all snap refreshes
+        env:
+          WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
+        run: |
+          Set-StrictMode -version latest
+          wsl --distribution ${Env:WSL_DISTRO_NAME} snap refresh --hold
+
       - name: Install core22 snap
         uses: ./.github/actions/install-snap
         with:
