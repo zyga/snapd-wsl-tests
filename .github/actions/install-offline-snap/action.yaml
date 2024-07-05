@@ -16,6 +16,9 @@ inputs:
   offline-snaps-dir:
     description: Directory where downloaded snaps and assertions are stored
     default: snaps
+  snap-classic-confinement:
+    description: Use classic confinement
+    default: "false"
 branding:
   icon: download
   color: orange
@@ -26,6 +29,7 @@ runs:
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         SNAP_REVISION: ${{ inputs.snap-revision }}
+        SNAP_CLASSIC_CONFINEMENT: ${{ inputs.snap-classic-confinement }}
         WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}
         OFFLINE_SNAPS_DIR: ${{ inputs.offline-snaps-dir }}
       shell: pwsh
@@ -35,4 +39,14 @@ runs:
         wsl --distribution ${Env:WSL_DISTRO_NAME} snap ack "${Env:OFFLINE_SNAPS_DIR}/${Env:SNAP_NAME}_${Env:SNAP_REVISION}.assert" || (Write-Error "Cannot ack assertion of snap ${Env:SNAP_NAME}." && Exit 1)
 
         Write-Output "Installing snap ${Env:SNAP_NAME} revision ${Env:SNAP_REVISION}."
-        wsl --distribution ${Env:WSL_DISTRO_NAME} snap install "${Env:OFFLINE_SNAPS_DIR}/${Env:SNAP_NAME}_${Env:SNAP_REVISION}.snap" || (Write-Error "Cannot install snap ${Env:SNAP_NAME}." && Exit 1)
+        [string[]] $wslArgs = @(
+          "--distribution"
+          "${Env:WSL_DISTRO_NAME}"
+          "snap"
+          "install"
+        )
+        if (${Env:SNAP_CLASSIC_CONFINEMENT} -eq "true") {
+          $wslArgs += "--classic"
+        }
+        $wslArgs += "${Env:OFFLINE_SNAPS_DIR}/${Env:SNAP_NAME}_${Env:SNAP_REVISION}.snap"
+        wsl $wslArgs || (Write-Error "Cannot install snap ${Env:SNAP_NAME}." && Exit 1)
