@@ -67,7 +67,7 @@ runs:
         path: ${{ inputs.wsl-rootfses-dir }}/${{ inputs.wsl-rootfs-file }}
         key: rootfs/${{ inputs.wsl-rootfs-file }}
 
-    - name: Download ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL RootFS
+    - name: Download ${{ inputs.distro-name }} WSL RootFS
       shell: pwsh
       if: ${{ steps.cache-rootfs.outputs.cache-hit != 'true' }}
       env:
@@ -152,7 +152,7 @@ runs:
           exit 1
         }
 
-    - name: Configure ${{ inputs.distro-name }} ${{ inputs.architecture }} to support cloud-init (hacks)
+    - name: Configure ${{ inputs.distro-name }} to support cloud-init (hacks)
       shell: pwsh
       if: ${{ fromJSON(inputs.wsl-enable-cloud-init-hack) }}
       env:
@@ -199,7 +199,7 @@ runs:
           exit 1
         }
 
-    - name: Setup ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance with cloud-init
+    - name: Setup ${{ inputs.distro-name }} WSL instance with cloud-init
       shell: pwsh
       env:
         WSL_DISTRO_NAME: ${{ inputs.wsl-distro-name }}

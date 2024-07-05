@@ -41,7 +41,6 @@ jobs:
     uses: ./.github/workflows/generic.yaml
     with:
       distro-name: Ubuntu ${{ matrix.version-id }}
-      architecture: amd64
       wsl-rootfs-url: https://cloud-images.ubuntu.com/wsl/${{ matrix.codename }}/current/ubuntu-${{ matrix.codename }}-wsl-amd64-wsl.rootfs.tar.gz
       wsl-rootfs-file: ubuntu-${{ matrix.codename }}-wsl-amd64-wsl.rootfs.tar.gz
       wsl-distro-name: Test-Ubuntu-${{ matrix.version-id }}

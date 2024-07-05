@@ -7,9 +7,6 @@ on:
       distro-name:
         required: true
         type: string
-      architecture:
-        required: true
-        type: string
       wsl-rootfs-url:
         required: true
         type: string
@@ -121,11 +118,11 @@ jobs:
           Set-StrictMode -version latest
           wsl --distribution ${Env:WSL_DISTRO_NAME} snap changes
 
-      - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
+      - name: Terminate ${{ inputs.distro-name }} WSL instance
         if: always()
         run: |
           Set-StrictMode -version latest
-          Write-Output "Terminating ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance..."
+          Write-Output "Terminating ${{ inputs.distro-name }} WSL instance..."
           $DistroName = '${{ inputs.wsl-distro-name }}'
 
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
@@ -249,11 +246,11 @@ jobs:
           Set-StrictMode -version latest
           wsl --distribution ${Env:WSL_DISTRO_NAME} snap changes
 
-      - name: Terminate ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance
+      - name: Terminate ${{ inputs.distro-name }} WSL instance
         if: always()
         run: |
           Set-StrictMode -version latest
-          Write-Output "Terminating ${{ inputs.distro-name }} ${{ inputs.architecture }} WSL instance..."
+          Write-Output "Terminating ${{ inputs.distro-name }} WSL instance..."
           $DistroName = '${{ inputs.wsl-distro-name }}'
 
           Start-Process -NoNewWindow -Wait -FilePath "wsl.exe" -ArgumentList "--terminate $DistroName"
