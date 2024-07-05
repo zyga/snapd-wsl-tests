@@ -5,13 +5,21 @@
     "cSpell.words": [
         "Distro",
         "gecos",
+        "HKLM",
+        "Krynicki",
+        "msiexec",
+        "noninteractive",
         "NOPASSWD",
+        "notlike",
+        "notmatch",
+        "pwsh",
         "rootfs",
         "rootfses",
         "runcmd",
         "snapcraft",
         "USERPROFILE",
         "wslconfig",
-        "wslpath"
+        "wslpath",
+        "Zygmunt"
     ]
 }
