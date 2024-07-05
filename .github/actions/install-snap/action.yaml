@@ -18,6 +18,9 @@ inputs:
   snaps-dir:
     description: Directory where snaps should be stored
     default: snaps
+  snap-classic-confinement:
+    description: Use classic confinement
+    default: "false"
 outputs:
   snap-revision:
     description: Revision of the installed snap
@@ -43,4 +46,5 @@ runs:
         wsl-distro-name: ${{ inputs.wsl-distro-name }}
         snap-name: ${{ inputs.snap-name }}
         snap-revision: ${{ steps.download.outputs.snap-revision }}
+        snap-classic-confinement: ${{ inputs.snap-classic-confinement }}
         offline-snaps-dir: ${{ steps.download.outputs.offline-snaps-dir }}
