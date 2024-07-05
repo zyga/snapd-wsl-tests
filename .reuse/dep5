@@ -1,0 +1,4 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: snapd-wsl-tests
+Upstream-Contact: Zygmunt Krynicki <zygmunt.krynicki@canonical.com>
+Source: https://github.com/zyga/snapd-wsl-tests
